@@ -19,7 +19,7 @@
 \set param17 'ur1Edk5Oe2n'
 \set param18 'WSGAb5XwJ3Y'
 
-explain (analyze, verbose, buffers)
+explain (analyze, costs, verbose, buffers, format json)
 select *
 from
     (
