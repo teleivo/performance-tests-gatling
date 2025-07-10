@@ -3,12 +3,13 @@ services:
   # TODO should we change connection pool settings? or should DHIS2 defaults be used?
   # https://docs.dhis2.org/en/manage/reference/dhisconf.html
   web:
-    image: "${DHIS2_IMAGE:-dhis2/core-dev:local}"
+    image: "${DHIS2_IMAGE:-dhis2/core:42.0}"
     mem_limit: 16gb
     # TODO does DHIS2/tomcat use shared memory?
     environment:
       JAVA_OPTS:
-        "-Dlog4j2.configurationFile=/opt/dhis2/log4j2.xml"
+        "-Dlog4j2.configurationFile=/opt/dhis2/log4j2.xml \
+        -Xmx10000m -Xms10000m"
     healthcheck:
       test: [ "CMD","curl", "--fail","http://localhost:8080/api/ping" ]
       interval: 10s
@@ -30,25 +31,25 @@ services:
   # https://github.com/mastodon/mastodon/blob/fb6c22f5c275685aa644d84c003e1d6922e15d40/docker-compose.yml#L8
   # https://wiki.postgresql.org/wiki/Tuning_Your_PostgreSQL_Server
   db:
-    # TODO any difference to 16-3.5-alpine ?
-    image: postgis/postgis:16-3.5
+    image: postgis/postgis:13-3.5
     mem_limit: 16gb
     shm_size: 256mb
-    command:
-      - postgres
-      - -c
-      - jit=off
-      - -c
-      - max_connections=200
-      - -c
-      - effective_cache_size=11GB # ~70% of RAM
-      - -c
-      - shared_buffers=5.6GB # ~35% of RAM
-      # TODO go through each config
-      - -c
-      - maintenance_work_mem=1GB
-      - -c
-      - work_mem=24MB
+    # TODO move this into a postgres.conf and use profiles or so to switch?
+    # command:
+    #   - postgres
+    #   - -c
+    #   - jit=off
+    #   - -c
+    #   - max_connections=200
+    #   - -c
+    #   - effective_cache_size=11GB # ~70% of RAM
+    #   - -c
+    #   - shared_buffers=5.6GB # ~35% of RAM
+    #   # TODO go through each config
+    #   - -c
+    #   - maintenance_work_mem=1GB
+    #   - -c
+    #   - work_mem=24MB
       # - -c
       # - checkpoint_completion_target = 0.8
       # - -c
@@ -57,6 +58,7 @@ services:
       # TODO try https://www.postgresql.org/docs/9.3/runtime-config-logging.html#GUC-LOG-TEMP-FILES
     volumes:
       - db-dump:/docker-entrypoint-initdb.d/
+      - ./docker/test-performance-dhis2-org-postgresql.conf:/etc/postgresql/postgresql.conf
     environment:
       POSTGRES_USER: dhis
       POSTGRES_DB: dhis
@@ -82,14 +84,14 @@ services:
     image: busybox # busybox wget version does not have --no-clobber, so we need to do the [ -f ] test
     command: sh -c '[ -f dump.sql.gz ] && echo "dump.sql.gz exists" || wget --output-document dump.sql.gz $$DHIS2_DB_DUMP_URL' # only download file if it does not exist
     environment:
-      DHIS2_DB_DUMP_URL: "${DHIS2_DB_DUMP_URL:-https://databases.dhis2.org/sierra-leone/dev/dhis2-db-sierra-leone.sql.gz}"
+      DHIS2_DB_DUMP_URL: "${DHIS2_DB_DUMP_URL:-https://databases.dhis2.org/sierra-leone/2.42.0/dhis2-db-sierra-leone.sql.gz}"
     working_dir: /opt/dump
     volumes:
       - db-dump:/opt/dump
 
   tcpdump:
     profiles:
-      - debug
+      - tcpdump
     image: nicolaka/netshoot
     command: tcpdump -i eth0 -w /data/dhis2.pcap
     network_mode: service:web
@@ -98,5 +100,82 @@ services:
     volumes:
       - $PWD/data:/data
 
+  prometheus:
+    profiles:
+      - monitoring
+    image: prom/prometheus:v2.53.5
+    command: --config.file=/etc/prometheus/prometheus.yml
+    ports:
+      - "127.0.0.1:9091:9090" # API & UI
+    volumes:
+      - ./docker/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus:/prometheus
+
+  grafana:
+    profiles:
+      - monitoring
+    image: grafana/grafana:12.0.2
+    ports:
+      - "127.0.0.1:3000:3000"
+    environment:
+      # Disable authentication so we see the dashboard right away
+      # https://github.com/grafana/grafana/issues/2335#issuecomment-631748060
+      GF_AUTH_DISABLE_LOGIN_FORM: true
+      GF_AUTH_ANONYMOUS_ENABLED: true
+      GF_AUTH_ANONYMOUS_ORG_NAME: Main Org.
+      GF_AUTH_ANONYMOUS_ORG_ROLE: Admin
+      GF_USERS_ALLOW_SIGN_UP: false
+    volumes:
+      - grafana:/var/lib/grafana
+      - ./docker/grafana:/etc/grafana/provisioning/
+
+  postgres-exporter:
+    profiles:
+      - monitoring
+    image: quay.io/prometheuscommunity/postgres-exporter:v0.17.1
+    mem_limit: 100m
+    environment:
+      DATA_SOURCE_NAME: "postgresql://dhis:dhis@db:5432/dhis?sslmode=disable"
+    ports:
+      - "127.0.0.1:9187:9187"
+    depends_on:
+      db:
+        condition: service_healthy
+
+  cadvisor:
+    profiles:
+      - monitoring
+    image: gcr.io/cadvisor/cadvisor:v0.52.0
+    mem_limit: 200m
+    ports:
+      - "127.0.0.1:8085:8080"
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+      - /dev/disk/:/dev/disk:ro
+    privileged: true
+    devices:
+      - /dev/kmsg:/dev/kmsg
+
+  node-exporter:
+    profiles:
+      - monitoring
+    image: prom/node-exporter:v1.9.1
+    mem_limit: 50m
+    ports:
+      - "127.0.0.1:9100:9100"
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    command:
+      - '--path.procfs=/host/proc'
+      - '--path.sysfs=/host/sys'
+      - '--collector.filesystem.ignored-mount-points=^/(sys|proc|dev|host|etc)($$|/)'
+
 volumes:
   db-dump: {}
+  prometheus:
+  grafana:
