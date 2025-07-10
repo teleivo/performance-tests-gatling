@@ -1,4 +1,6 @@
 #!/bin/sh
+# Get the query plan for analysis
 
-psql -h localhost -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" \
-  -XqAt -f ./tracker-exporter-tests.sql
+mkdir plans
+# relies on https://www.postgresql.org/docs/current/libpq-envars.html to connect to the DB
+psql -XqAt -f ./tracker-exporter-tests.sql > plans/"$PLAN_NAME".json
