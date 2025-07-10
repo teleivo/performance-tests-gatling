@@ -1,3 +1,5 @@
+-- this is one of the queries executed by ./src/test/java/org/hisp/dhis/test/TrackerExporterTests.java
+-- the test executes another variant which is the count
 \set param1 '890614'
 \set param2 'xE7jOejl9FI'
 \set param3 '2024-01-01 00:00:00'
