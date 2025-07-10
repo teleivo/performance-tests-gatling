@@ -73,7 +73,7 @@ services:
       timeout: 3s
       retries: 5
     ports:
-      - "127.0.0.1:5432:5432"
+      - "127.0.0.1:32769:5432"
     depends_on:
       db-dump:
         condition: service_completed_successfully # make sure the DB dump has been downloaded
