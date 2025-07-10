@@ -34,6 +34,7 @@ services:
     image: postgis/postgis:13-3.5
     mem_limit: 16gb
     shm_size: 256mb
+    command: -c config_file=/etc/postgresql.conf
     # TODO move this into a postgres.conf and use profiles or so to switch?
     # command:
     #   - postgres
@@ -58,7 +59,7 @@ services:
       # TODO try https://www.postgresql.org/docs/9.3/runtime-config-logging.html#GUC-LOG-TEMP-FILES
     volumes:
       - db-dump:/docker-entrypoint-initdb.d/
-      - ./docker/test-performance-dhis2-org-postgresql.conf:/etc/postgresql/postgresql.conf
+      - ./docker/test-performance-dhis2-org-postgresql.conf:/etc/postgresql.conf
     environment:
       POSTGRES_USER: dhis
       POSTGRES_DB: dhis
