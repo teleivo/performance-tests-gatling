@@ -49,7 +49,8 @@ public class TrackerExporterTests extends Simulation {
             .header("Content-Type", "application/json")
             .userAgentHeader("Gatling/Performance Test")
             .warmUp(
-                "http://localhost:8080/api/ping") // https://docs.gatling.io/reference/script/http/protocol/#warmup
+                baseUrl
+                    + "/api/ping") // https://docs.gatling.io/reference/script/http/protocol/#warmup
             .disableCaching(); // to repeat the same request without HTTP cache influence (304)
 
     // https://docs.gatling.io/reference/script/http/protocol/#shareconnections
