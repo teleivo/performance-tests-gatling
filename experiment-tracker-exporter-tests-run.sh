@@ -15,6 +15,10 @@
 
 RUNS=24
 
+# relies on https://www.postgresql.org/docs/current/libpq-envars.html to connect to the DB
+# update postgres statistics before running test to avoid them being outdated in the dump
+psql -c 'VACUUM;'
+
 mvn clean
 for ((i=1; i<=RUNS; i++)); do
   echo "Running test iteration $i/$((RUNS+1))"

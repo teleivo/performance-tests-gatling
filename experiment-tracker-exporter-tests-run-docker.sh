@@ -44,6 +44,9 @@ for ((i=1; i<=RUNS; i++)); do
     done
     echo "DHIS2 is ready!"
 
+    # update postgres statistics before running test to avoid them being outdated in the dump
+    docker compose exec db psql -U dhis -c 'VACUUM;'
+
     mvn gatling:test \
      -Dgatling.simulationClass=org.hisp.dhis.test.TrackerExporterTests \
      "$@"
