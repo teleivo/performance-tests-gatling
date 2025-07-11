@@ -11,7 +11,7 @@ services:
         "-Dlog4j2.configurationFile=/opt/dhis2/log4j2.xml \
         -Xmx10000m -Xms10000m"
     healthcheck:
-      test: [ "CMD","curl", "--fail","http://localhost:8080/api/ping" ]
+      test: [ "CMD","curl", "--fail", "http://localhost:8080/api/ping" ]
       interval: 10s
       timeout: 3s
       retries: 3
@@ -69,7 +69,7 @@ services:
       test:
         [
           "CMD-SHELL",
-          'psql --no-password --quiet --username $$POSTGRES_USER postgres://127.0.0.1/$$POSTGRES_DB -p 5432 --command "SELECT ''ok''" > /dev/null',
+          'psql --no-password --quiet --username $$POSTGRES_USER postgres://127.0.0.1/$$POSTGRES_DB -p 5432 --command "/** docker healthcheck **/ SELECT ''ok''" > /dev/null',
         ]
       start_period: 120s
       interval: 1s
