@@ -49,6 +49,7 @@ dropdown_configs = {
     "stacked": ["simulation", "request"],
     "distribution": ["simulation", "request", "timestamp"],
     "scatter": ["simulation", "request", "timestamp"],
+    "timeline": ["simulation", "request", "timestamp"],
 }
 
 # dark mode makes the active selection illegible
@@ -446,7 +447,7 @@ def _get_request_visibility(
         # Distribution/scatter
         key = (defaults["simulation"], defaults["run"], request)
         if key in trace_mapping:
-            if plot_type == "distribution" or plot_type == "scatter":
+            if plot_type == "distribution" or plot_type == "scatter" or plot_type == "timeline":
                 start_idx, end_idx = trace_mapping[key]
                 for j in range(start_idx, end_idx):
                     if j < len(visibility):
@@ -468,7 +469,7 @@ def _get_run_visibility(
 
     key = (defaults["simulation"], run, defaults["request"])
     if key in trace_mapping:
-        if plot_type == "distribution" or plot_type == "scatter":
+        if plot_type == "distribution" or plot_type == "scatter" or plot_type == "timeline":
             start_idx, end_idx = trace_mapping[key]
             for j in range(start_idx, end_idx):
                 if j < len(visibility):
@@ -1092,6 +1093,144 @@ def plot_scatter(gatling_data: GatlingData) -> go.Figure:
     return fig
 
 
+def plot_timeline(gatling_data: GatlingData) -> go.Figure:
+    """Plot timeline chart showing request duration as horizontal bars."""
+
+    fig = go.Figure()
+
+    if not gatling_data.data:
+        return fig
+
+    simulations = gatling_data.get_simulations()
+
+    # Default to first simulation, first run, first request for initial display
+    default_simulation = simulations[0] if simulations else None
+    default_run = None
+    default_request = None
+
+    if default_simulation:
+        runs = gatling_data.get_runs(default_simulation)
+        default_run = runs[0] if runs else None
+
+        if default_run:
+            requests = gatling_data.get_requests(default_simulation, default_run)
+            default_request = requests[0] if requests else None
+
+    if not default_simulation or not default_run or not default_request:
+        return fig
+
+    # Create traces for all combinations (initially all hidden except default)
+    trace_mapping = {}  # Maps (simulation, run, request) to trace index
+    trace_idx = 0
+    max_duration = 0
+
+    for simulation in simulations:
+        for run_timestamp in gatling_data.get_runs(simulation):
+            for request_name in gatling_data.get_requests(simulation, run_timestamp):
+                request_data = gatling_data.get_request_data(
+                    simulation, run_timestamp, request_name
+                )
+
+                # Extract start timestamps, end timestamps and response times
+                start_timestamps, end_timestamps = zip(*request_data.timestamps, strict=False)
+                response_times = request_data.response_times
+
+                # Get run directory for click-to-copy functionality
+                run_data = gatling_data.get_run_data(simulation, run_timestamp)
+                run_directory = str(run_data.directory.absolute())
+
+                # Create request numbers (1-indexed)
+                request_numbers = list(range(1, len(response_times) + 1))
+
+                # Determine if this should be initially visible
+                is_default = (
+                    simulation == default_simulation
+                    and run_timestamp == default_run
+                    and request_name == default_request
+                )
+
+                start_trace_idx = trace_idx
+
+                # Get first request start time for this specific run
+                run_start_time = start_timestamps[0]
+
+                # Calculate max duration for tick generation
+                last_request_end = (end_timestamps[-1] - run_start_time).total_seconds() * 1000
+                max_duration = max(max_duration, last_request_end)
+
+                # Create horizontal bars for each request
+                fig.add_trace(
+                    go.Bar(
+                        base=[
+                            (start - run_start_time).total_seconds() * 1000
+                            for start in start_timestamps
+                        ],
+                        x=[
+                            (end - start).total_seconds() * 1000
+                            for start, end in request_data.timestamps
+                        ],
+                        y=request_numbers,
+                        orientation="h",
+                        name=f"{simulation}_{run_timestamp}_{request_name}",
+                        visible=is_default,
+                        marker=dict(color="lightblue", opacity=0.7),
+                        hovertemplate=(
+                            "Response time (ms): %{customdata[0]:.0f}ms<br>"
+                            "Request start time: %{customdata[1]}<br>"
+                            "Request end time: %{customdata[2]}<br>"
+                            "Click to copy run directory path<br>"
+                            "<extra></extra>"
+                        ),
+                        customdata=list(
+                            zip(
+                                response_times,
+                                start_timestamps,
+                                end_timestamps,
+                                [run_directory] * len(response_times),
+                                strict=False,
+                            )
+                        ),
+                        showlegend=False,
+                    )
+                )
+                trace_idx += 1
+
+                trace_mapping[(simulation, run_timestamp, request_name)] = (
+                    start_trace_idx,
+                    trace_idx,
+                )
+
+    defaults = {
+        "simulation": default_simulation,
+        "run": default_run,
+        "request": default_request,
+    }
+    updatemenus = create_plot_dropdowns(
+        "timeline", gatling_data, trace_mapping, len(fig.data), defaults
+    )
+
+    fig.update_layout(
+        xaxis_title="Duration (s)",
+        yaxis_title="Request Number",
+        template="plotly_dark",
+        showlegend=False,
+        font=dict(size=14),
+        xaxis=dict(
+            title=dict(font=dict(size=16)),
+            showgrid=True,
+            gridcolor="rgba(128, 128, 128, 0.3)",
+            tickvals=list(range(0, int(max_duration) + 1000, 500)),
+            ticktext=[f"{i / 1000:.1f}s" for i in range(0, int(max_duration) + 1000, 500)],
+        ),
+        yaxis=dict(
+            title=dict(font=dict(size=16)),
+        ),
+        updatemenus=updatemenus,
+    )
+
+    return fig
+
+
 def plot_scatter_all(gatling_data: GatlingData) -> go.Figure:
     """Plot response times for all runs, each run with different color."""
 
@@ -1168,6 +1307,8 @@ def plot_scatter_all(gatling_data: GatlingData) -> go.Figure:
             title=dict(font=dict(size=16)),
             showgrid=True,
             gridcolor="rgba(128, 128, 128, 0.3)",
+            tickformat=".0f",
+            ticksuffix=" ms",
         ),
         yaxis=dict(title=dict(font=dict(size=16))),
     )
@@ -1263,20 +1404,23 @@ def main():
         epilog="""
 Examples:
   # Single report directory
-  gstat ./samples/trackerexportertests-20250627064559771
+  gstat --plot distribution ./samples/trackerexportertests-20250627064559771
 
   # Multiple report directories
   gstat ./samples/
 
   # With distribution plotting (default)
-  gstat ./samples/ --plot
-  gstat ./samples/ --plot distribution
+  gstat --plot ./samples/
+  gstat --plot distribution ./samples/
 
   # With stacked percentile bar chart
-  gstat ./samples/ --plot stacked
+  gstat --plot stacked ./samples/
 
   # With scatter plot of response times over time
-  gstat ./samples/ --plot scatter
+  gstat --plot scatter ./samples/
+
+  # With timeline plot showing request duration bars
+  gstat --plot timeline ./samples/
         """,
     )
     parser.add_argument(
@@ -1288,7 +1432,7 @@ Examples:
         "--plot",
         nargs="?",
         const="distribution",
-        choices=["distribution", "stacked", "scatter", "scatter-all"],
+        choices=["distribution", "stacked", "scatter", "scatter-all", "timeline"],
         help="Generate interactive plot instead of CSV output (default: distribution)",
     )
     parser.add_argument(
@@ -1314,14 +1458,17 @@ Examples:
     gatling_data = load_gatling_data(args.report_directory, args.method)
 
     if args.plot:
-        if args.plot == "stacked":
-            fig = plot_percentiles_stacked(gatling_data)
-        elif args.plot == "scatter":
-            fig = plot_scatter(gatling_data)
-        elif args.plot == "scatter-all":
-            fig = plot_scatter_all(gatling_data)
-        else:
-            fig = plot_percentiles(gatling_data)
+        match args.plot:
+            case "stacked":
+                fig = plot_percentiles_stacked(gatling_data)
+            case "scatter":
+                fig = plot_scatter(gatling_data)
+            case "scatter-all":
+                fig = plot_scatter_all(gatling_data)
+            case "timeline":
+                fig = plot_timeline(gatling_data)
+            case _:
+                fig = plot_percentiles(gatling_data)
 
         show_plot_with_clipboard(fig, gatling_data.report_directory, args.output)
     else:
