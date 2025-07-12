@@ -41,6 +41,11 @@ public class TrackerExporterTests extends Simulation {
 
   public TrackerExporterTests() {
     String baseUrl = System.getProperty("instance", "http://localhost:8080");
+    String repeat = System.getProperty("repeat", "100");
+    // TODO maybe try this to see the effect on the response times
+    // https://docs.gatling.io/concepts/scenario/#pace
+    // String pause = System.getProperty("pause", "0");
+
     HttpProtocolBuilder httpProtocolBuilder =
         http.baseUrl(baseUrl)
             .acceptHeader("application/json")
@@ -88,7 +93,9 @@ public class TrackerExporterTests extends Simulation {
             + program
             + "&pageSize=100&totalPages=true&occurredAfter=2024-01-01&occurredBefore=2024-12-31";
     ScenarioBuilder scenario =
-        scenario(query).repeat(100).on(http("events").get(query).check(status().is(200)));
+        scenario(query)
+            .repeat(Integer.parseInt(repeat))
+            .on(http("events").get(query).check(status().is(200)));
 
     // only one user at a time
     setUp(scenario.injectOpen(OpenInjectionStep.atOnceUsers(1)))
