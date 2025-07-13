@@ -32,8 +32,8 @@ RUN=${RUN:=$(cat target/gatling/lastRun.txt)}
 
 # extract raw Gatling data from binary simulation.log
 glog \
-  --config ../performance-tests-gatling/src/test/resources/gatling.conf \
-  --scan-subdirs target/gatling
+  --config ./src/test/resources/gatling.conf \
+  "target/gatling/$RUN"
 
 RUN_LOG="target/gatling/$RUN/simulation.csv"
 
