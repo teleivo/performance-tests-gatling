@@ -11,8 +11,10 @@ glog \
 RUN_LOG="target/gatling/$RUN/simulation.csv"
 
 # Extract first start_timestamp and last end_timestamp for record_type request
-BEGIN_TIMESTAMP=$(awk --field-separator=',' '$1=="request" && $6!="" {print $6}' "$RUN_LOG" | sort --numeric-sort | head --lines=1)
-END_TIMESTAMP=$(awk --field-separator=',' '$1=="request" && $7!="" {print $7}' "$RUN_LOG" | sort --numeric-sort | tail --lines=1)
+# Note: CSV contains quoted request names with commas which breaks normal field parsing
+# Use sed to extract timestamps after the ,OK, pattern
+BEGIN_TIMESTAMP=$(grep '^request,.*,OK,' "$RUN_LOG" | sed 's/.*,OK,\([0-9]\+\),.*/\1/' | sort -n | head -1)
+END_TIMESTAMP=$(grep '^request,.*,OK,' "$RUN_LOG" | sed 's/.*,OK,[0-9]\+,\([0-9]\+\),.*/\1/' | sort -n | tail -1)
 
 # Convert timestamps from milliseconds to date format for pgbadger (in UTC as thats also configured
 # in ./docker/test-performance-dhis2-org-postgresql.conf)

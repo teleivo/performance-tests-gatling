@@ -31,15 +31,15 @@ import static io.gatling.javaapi.core.CoreDsl.details;
 import static io.gatling.javaapi.core.CoreDsl.scenario;
 import static io.gatling.javaapi.http.HttpDsl.http;
 import static io.gatling.javaapi.http.HttpDsl.status;
-import static org.hisp.dhis.TestDefinitions.constantSingleUser;
 
+import io.gatling.javaapi.core.OpenInjectionStep;
 import io.gatling.javaapi.core.ScenarioBuilder;
 import io.gatling.javaapi.core.Simulation;
 import io.gatling.javaapi.http.HttpProtocolBuilder;
 
-public class TrackerExporterTests extends Simulation {
+public class TrackedEntityTypesTests extends Simulation {
 
-  public TrackerExporterTests() {
+  public TrackedEntityTypesTests() {
     String baseUrl = System.getProperty("instance", "http://localhost:8080");
     String repeat = System.getProperty("repeat", "100");
     // TODO maybe try this to see the effect on the response times
@@ -77,32 +77,20 @@ public class TrackerExporterTests extends Simulation {
       httpProtocolBuilder.shareConnections();
     }
 
-    // SL DB has ~424k events vs ~257k in HMIS DB
-    // Event program: VBqh0ynB2wv Malaria Case Registration is the largest event program with ~200k
-    // events
-    String largeProgram = "VBqh0ynB2wv";
-    // Event program: bMcwwoVnbSR Malaria testing and surveillance has ~10k events
-    String smallProgram = "bMcwwoVnbSR";
-    String program = System.getProperty("large") != null ? largeProgram : smallProgram;
-
-    // TODO(ivo) get realistic query from Glowroot
     // get a 100 requests per run irrespective of the response times so comparisons are likely
     // to be more accurate
-    String query =
-        "/api/tracker/events?program="
-            + program
-            + "&pageSize=100&totalPages=true&occurredAfter=2024-01-01&occurredBefore=2024-12-31";
+    String query = "/api/trackedEntityTypes?fields=id,name,code,attributeValues";
     ScenarioBuilder scenario =
         scenario(query)
             .repeat(Integer.parseInt(repeat))
-            .on(http("events").get(query).check(status().is(200)));
+            .on(http(query).get(query).check(status().is(200)));
 
     // only one user at a time
-    // setUp(scenario.injectOpen(OpenInjectionStep.atOnceUsers(1)))
-    setUp(scenario.injectClosed(constantSingleUser(15)))
+    setUp(scenario.injectOpen(OpenInjectionStep.atOnceUsers(1)))
+        // setUp(scenario.injectClosed(constantSingleUser(15)))
         .protocols(httpProtocolBuilder)
         .assertions(
-            details("events").successfulRequests().percent().gte(100d),
-            details("events").responseTime().percentile(90).lte(5000));
+            details(query).successfulRequests().percent().gte(100d),
+            details(query).responseTime().percentile(90).lte(5000));
   }
 }

@@ -37,6 +37,7 @@ percentile_line_colors = {
 }
 
 mean_color = "#2E86AB"  # Blue
+line_width = 3  # Default line width for mean and percentile lines
 
 dropdown_position_y = {
     "simulation": 1.25,
@@ -716,7 +717,7 @@ def plot_percentiles_stacked(gatling_data: GatlingData) -> go.Figure:
                     x=list(range(1, len(runs_with_request) + 1)),
                     y=mean_values,
                     mode="lines+markers",
-                    line=dict(color=mean_color, width=3),
+                    line=dict(color=mean_color, width=line_width),
                     marker=dict(size=8, color=mean_color),
                     name="Mean",
                     visible=is_default,
@@ -853,7 +854,7 @@ def plot_percentiles(gatling_data: GatlingData) -> go.Figure:
                                 x=[percentiles[percentile_name], percentiles[percentile_name]],
                                 y=[0, max(counts) if counts.size > 0 else 100],
                                 mode="lines",
-                                line=dict(color=color, width=2, dash="dash"),
+                                line=dict(color=color, width=line_width, dash="dash"),
                                 name=f"{percentile_name}: {percentiles[percentile_name]:.0f}ms",
                                 visible=is_default,
                                 hovertemplate=f"<b>{percentile_name} Percentile</b><br>"
@@ -871,7 +872,7 @@ def plot_percentiles(gatling_data: GatlingData) -> go.Figure:
                         x=[mean_value, mean_value],
                         y=[0, max(counts) if counts.size > 0 else 100],
                         mode="lines",
-                        line=dict(color="#2E86AB", width=3, dash="solid"),
+                        line=dict(color=mean_color, width=line_width, dash="solid"),
                         name=f"Mean: {mean_value:.0f}ms",
                         visible=is_default,
                         hovertemplate="<b>Mean</b><br>"
@@ -1024,7 +1025,7 @@ def plot_scatter(gatling_data: GatlingData) -> go.Figure:
                                 x=x_range,
                                 y=[percentiles[percentile_name], percentiles[percentile_name]],
                                 mode="lines",
-                                line=dict(color=color, width=2, dash="dash"),
+                                line=dict(color=color, width=line_width, dash="dash"),
                                 name=f"{percentile_name}: {percentiles[percentile_name]:.0f}ms",
                                 visible=is_default,
                                 hovertemplate=f"<b>{percentile_name} Percentile</b><br>"
@@ -1042,7 +1043,7 @@ def plot_scatter(gatling_data: GatlingData) -> go.Figure:
                         x=x_range,
                         y=[mean_value, mean_value],
                         mode="lines",
-                        line=dict(color=mean_color, width=3, dash="solid"),
+                        line=dict(color=mean_color, width=line_width, dash="solid"),
                         name=f"Mean: {mean_value:.0f}ms",
                         visible=is_default,
                         hovertemplate="<b>Mean</b><br>"

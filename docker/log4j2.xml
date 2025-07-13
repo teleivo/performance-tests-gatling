@@ -32,6 +32,8 @@
             Please check https://logging.apache.org/log4j/2.x/manual/configuration.html
         -->
         <Logger name="org.hisp.dhis" level="INFO" additivity="true"/>
+	<!-- does this add to the first request being slow? -->
+        <Logger name="org.hisp.dhis.security.AuthenticationLoggerListener" level="ERROR" additivity="false"/>
 
         <Root level="WARN">
             <AppenderRef ref="console"/>
