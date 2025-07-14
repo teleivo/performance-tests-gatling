@@ -13,21 +13,25 @@ TIMING_FORMAT="DNS lookup:\t%{time_namelookup}s\nTCP connect:\t%{time_connect}s\
 mkdir -p ./profiler-output
 
 echo "First request..."
-docker compose exec web sh -c 'asprof start -e cpu 1'
+docker compose exec web sh -c 'asprof start -e cpu -f /profiler-output/first.jfr 1'
 
 curl --silent --output /tmp/dhis2-response.json --write-out "$TIMING_FORMAT" "$URL"
 
-docker compose exec web sh -c 'asprof stop -f /profiler-output/request-one.html 1'
+docker compose exec web sh -c 'asprof stop 1'
 
 sleep 1
 
 echo "Second request..."
-docker compose exec web sh -c 'asprof start -e cpu 1'
+docker compose exec web sh -c 'asprof start -e cpu -f /profiler-output/second.jfr 1'
 
 curl --silent --output /tmp/dhis2-response.json --write-out "$TIMING_FORMAT" "$URL"
 
-docker compose exec web sh -c 'asprof stop -f /profiler-output/request-two.html 1'
+docker compose exec web sh -c 'asprof stop 1'
 
+# Convert to flamegraph and collapsed
+docker compose exec web sh -c 'jfrconv /profiler-output/first.jfr --title "First" /profiler-output/first.html'
+docker compose exec web sh -c 'jfrconv /profiler-output/second.jfr --title "Second" /profiler-output/second.html'
+docker compose exec web sh -c 'jfrconv /profiler-output/first.jfr /profiler-output/first.collapsed'
+docker compose exec web sh -c 'jfrconv /profiler-output/second.jfr /profiler-output/second.collapsed'
 docker compose cp web:/profiler-output ./
-
 echo "Flamegraphs saved to ./profiler-output"
