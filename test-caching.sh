@@ -20,6 +20,15 @@ rotate_sql_logs() {
     --quiet --command="SELECT pg_rotate_logfile();"
 }
 
+process_sql_logs() {
+  local name="$1"
+  pgbadger \
+    --title "$name" \
+    --prefix '%t [%p]: user=%u,db=%d,app=%a ' \
+    --dbname dhis \
+    --outfile "./profiler-output/${name}-sql.html" "./profiler-output/${name}.log"
+}
+
 print_timing() {
     local timing_output="$1"
     IFS=',' read -ra TIMING_ARRAY <<< "$timing_output"
@@ -72,4 +81,6 @@ docker compose exec --workdir /profiler-output web sh -c "jfrconv second.jfr --t
 docker compose exec --workdir /profiler-output web sh -c 'jfrconv first.jfr first.collapsed'
 docker compose exec --workdir /profiler-output web sh -c 'jfrconv second.jfr second.collapsed'
 docker compose cp web:/profiler-output ./
+process_sql_logs "first"
+process_sql_logs "second"
 echo "Flamegraphs and PostgreSQL logs saved to ./profiler-output"
