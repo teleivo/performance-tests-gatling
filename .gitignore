@@ -42,3 +42,6 @@ experiment-workflows-flat/
 experiment-raw-speed-tests/
 experiment-tracker-exporter-tests/
 pgbadger.html
+
+# Profiling output
+profiler-output/

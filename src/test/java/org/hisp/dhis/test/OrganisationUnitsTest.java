@@ -37,9 +37,9 @@ import io.gatling.javaapi.core.ScenarioBuilder;
 import io.gatling.javaapi.core.Simulation;
 import io.gatling.javaapi.http.HttpProtocolBuilder;
 
-public class TrackedEntityTypesTests extends Simulation {
+public class OrganisationUnitsTest extends Simulation {
 
-  public TrackedEntityTypesTests() {
+  public OrganisationUnitsTest() {
     String baseUrl = System.getProperty("instance", "http://localhost:8080");
     String repeat = System.getProperty("repeat", "100");
     // TODO maybe try this to see the effect on the response times
@@ -79,7 +79,8 @@ public class TrackedEntityTypesTests extends Simulation {
 
     // get a 100 requests per run irrespective of the response times so comparisons are likely
     // to be more accurate
-    String query = "/api/trackedEntityTypes?fields=id,name,code,attributeValues";
+    String query =
+        "/api/organisationUnits?fields=:all,!name,!id,!favorites,!translations,!children,!sharing&pageSize=2000";
     ScenarioBuilder scenario =
         scenario(query)
             .repeat(Integer.parseInt(repeat))

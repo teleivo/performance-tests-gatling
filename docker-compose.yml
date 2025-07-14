@@ -72,7 +72,7 @@ services:
           'psql --no-password --quiet --username $$POSTGRES_USER postgres://127.0.0.1/$$POSTGRES_DB -p 5432 --command "/** docker healthcheck **/ SELECT ''ok''" > /dev/null',
         ]
       start_period: 120s
-      interval: 1s
+      interval: 3s
       timeout: 3s
       retries: 5
     ports:
