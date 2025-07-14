@@ -12,6 +12,14 @@ API=${API:="/organisationUnits?pageSize=2000&fields=:all,!name,!id,!favorites,!t
 URL="$BASE_URL$API"
 TIMING_FORMAT="%{time_namelookup},%{time_connect},%{time_appconnect},%{time_pretransfer},%{time_starttransfer},%{time_total},%{size_download},%{speed_download}"
 
+rotate_sql_logs() {
+  # Remove existing and create a new PostgreSQL log
+  docker compose exec db rm /var/lib/postgresql/data/log/postgresql.log
+  docker compose exec db psql \
+    --username=dhis --dbname=dhis --set=application_name=log_rotator \
+    --quiet --command="SELECT pg_rotate_logfile();"
+}
+
 print_timing() {
     local timing_output="$1"
     IFS=',' read -ra TIMING_ARRAY <<< "$timing_output"
@@ -27,6 +35,8 @@ print_timing() {
 mkdir --parents ./profiler-output
 
 echo "First request..."
+rotate_sql_logs
+# Start profiling
 docker compose exec --workdir /profiler-output web sh -c 'asprof start -e cpu -f first.jfr 1' > /dev/null
 
 TIMING_OUTPUT=$(curl --silent --output /tmp/dhis2-response.json --write-out "$TIMING_FORMAT" "$URL")
@@ -36,10 +46,14 @@ print_timing "$TIMING_OUTPUT"
 
 docker compose exec web sh -c 'asprof stop 1' > /dev/null
 
+docker compose cp db:/var/lib/postgresql/data/log/postgresql.log ./profiler-output/first.log
+
 sleep 1
 
 echo
 echo "Second request..."
+rotate_sql_logs
+# Start profiling
 docker compose exec --workdir /profiler-output web sh -c 'asprof start -e cpu -f second.jfr 1' > /dev/null
 
 TIMING_OUTPUT=$(curl --silent --output /tmp/dhis2-response.json --write-out "$TIMING_FORMAT" "$URL")
@@ -49,6 +63,8 @@ print_timing "$TIMING_OUTPUT"
 
 docker compose exec web sh -c 'asprof stop 1' > /dev/null
 
+docker compose cp db:/var/lib/postgresql/data/log/postgresql.log ./profiler-output/second.log
+
 echo
 # Convert to flamegraph and collapsed
 docker compose exec --workdir /profiler-output web sh -c "jfrconv first.jfr --title \"First $API took $FIRST_TOTAL_TIME\" first.html"
@@ -56,4 +72,4 @@ docker compose exec --workdir /profiler-output web sh -c "jfrconv second.jfr --t
 docker compose exec --workdir /profiler-output web sh -c 'jfrconv first.jfr first.collapsed'
 docker compose exec --workdir /profiler-output web sh -c 'jfrconv second.jfr second.collapsed'
 docker compose cp web:/profiler-output ./
-echo "Flamegraphs saved to ./profiler-output"
+echo "Flamegraphs and PostgreSQL logs saved to ./profiler-output"

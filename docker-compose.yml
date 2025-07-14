@@ -61,15 +61,18 @@ services:
       - db-dump:/docker-entrypoint-initdb.d/
       - ./docker/test-performance-dhis2-org-postgresql.conf:/etc/postgresql.conf
     environment:
-      POSTGRES_USER: dhis
-      POSTGRES_DB: dhis
+      POSTGRES_USER: &postgres_user dhis
+      POSTGRES_DB: &postgres_db dhis
       POSTGRES_PASSWORD: &postgres_password dhis
-      PGPASSWORD: *postgres_password # needed by psql in healthcheck
+      # https://www.postgresql.org/docs/current/libpq-envars.html
+      PGUSER: *postgres_user
+      PGDATABASE: *postgres_db
+      PGPASSWORD: *postgres_password
     healthcheck:
       test:
         [
           "CMD-SHELL",
-          'psql --no-password --quiet --username $$POSTGRES_USER postgres://127.0.0.1/$$POSTGRES_DB -p 5432 --command "/** docker healthcheck **/ SELECT ''ok''" > /dev/null',
+          'psql --quiet --host=127.0.0.1 --port=5432 --set=application_name=docker --command "/** docker healthcheck **/ SELECT ''ok''" > /dev/null',
         ]
       start_period: 120s
       interval: 3s
