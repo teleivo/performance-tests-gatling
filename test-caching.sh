@@ -12,6 +12,8 @@ API=${API:="/organisationUnits?pageSize=2000&fields=:all,!name,!id,!favorites,!t
 URL="$BASE_URL$API"
 TIMING_FORMAT="%{time_namelookup},%{time_connect},%{time_appconnect},%{time_pretransfer},%{time_starttransfer},%{time_total},%{size_download},%{speed_download}"
 PROF_ARGS=${PROF_ARGS:="-e cpu"}
+# This is to gather more samples in case the second request is considerably faster
+ADDITIONAL_REQUESTS=${ADDITIONAL_REQUESTS:=0}
 
 echo "Profiling requests to $API"
 
@@ -58,7 +60,11 @@ print_cache_metrics() {
 }
 
 make_http_request() {
-  curl --silent --output /tmp/dhis2-response.json --write-out "$TIMING_FORMAT" "$URL"
+  local request_id
+  request_id=$(uuidgen | tr -d '\n')
+  curl --silent --output /tmp/dhis2-response.json --write-out "$TIMING_FORMAT" \
+    --header "X-Request-ID: $request_id" \
+    "$URL"
 }
 
 print_http_timings() {
@@ -99,11 +105,6 @@ SECOND_TIMING=$(make_http_request)
 print_http_timings "$SECOND_TIMING"
 SECOND_TOTAL_TIME=$(get_http_total_time "$SECOND_TIMING")
 
-# Calculate additional requests.
-# This is to gather roughly the same amount of samples in case the second request is considerably
-# faster
-ADDITIONAL_REQUESTS=$(printf "%.0f" "$(echo "($FIRST_TOTAL_TIME/$SECOND_TOTAL_TIME)-1" | bc -l)")  # printf rounds to nearest integer
-# Ensure non-negative (no additional requests if second is slower)
 if (( ADDITIONAL_REQUESTS > 0 )); then
   echo
   echo "Making $ADDITIONAL_REQUESTS additional requests to balance profiling samples..."

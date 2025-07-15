@@ -8,7 +8,7 @@ services:
       - seccomp:unconfined  # Allow profiling syscalls
     environment:
       JAVA_OPTS:
-        "-Dlog4j2.configurationFile=/opt/dhis2/log4j2.xml \
+        "-Dlog4j2.configurationFile=/opt/dhis2/log4j2-profile.xml \
         -agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:8081 \
         -agentpath:/usr/local/YourKit/bin/linux-x86-64/libyjpagent.so=port=10001,listen=all,snapshot_name_format=dhis2-{datetime} \
         -XX:+UnlockDiagnosticVMOptions \
@@ -17,6 +17,7 @@ services:
         - ~/.local/YourKit:/usr/local/YourKit
         - async-profiler:/usr/local
         - async-profiler-output:/profiler-output
+        - ./docker/log4j2-profile.xml:/opt/dhis2/log4j2-profile.xml:ro
     ports:
       - "127.0.0.1:8081:8081" # Debugger: connect using commandline flag -agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:8081
       - "127.0.0.1:10001:10001" # YourKit Profiler Agent

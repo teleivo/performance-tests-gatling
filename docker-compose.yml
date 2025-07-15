@@ -129,6 +129,11 @@ services:
       GF_AUTH_ANONYMOUS_ORG_NAME: Main Org.
       GF_AUTH_ANONYMOUS_ORG_ROLE: Admin
       GF_USERS_ALLOW_SIGN_UP: false
+      # Disable session authentication to prevent auth spam logs
+      GF_AUTH_DISABLE_SIGNOUT_MENU: true
+      GF_AUTH_TOKEN_ROTATION_INTERVAL_MINUTES: 0
+      # Reduce log verbosity for dev setup
+      GF_LOG_LEVEL: error
     volumes:
       - grafana:/var/lib/grafana
       - ./docker/grafana:/etc/grafana/provisioning/
