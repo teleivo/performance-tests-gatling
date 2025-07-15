@@ -102,10 +102,10 @@ SECOND_TOTAL_TIME=$(get_http_total_time "$SECOND_TIMING")
 # Calculate additional requests.
 # This is to gather roughly the same amount of samples in case the second request is considerably
 # faster
-ADDITIONAL_REQUESTS=$(echo "scale=0; ($FIRST_TOTAL_TIME/$SECOND_TOTAL_TIME)-1" | bc -l)
-ADDITIONAL_REQUESTS=${ADDITIONAL_REQUESTS%.*}  # Remove decimal part if any
+ADDITIONAL_REQUESTS=$(printf "%.0f" "$(echo "($FIRST_TOTAL_TIME/$SECOND_TOTAL_TIME)-1" | bc -l)")  # printf rounds to nearest integer
 # Ensure non-negative (no additional requests if second is slower)
-if (( $(echo "$ADDITIONAL_REQUESTS > 0" | bc -l) )); then
+if (( ADDITIONAL_REQUESTS > 0 )); then
+  echo
   echo "Making $ADDITIONAL_REQUESTS additional requests to balance profiling samples..."
   for i in $(seq 1 "$ADDITIONAL_REQUESTS"); do
       echo "Additional request $i/$ADDITIONAL_REQUESTS..."
