@@ -18,7 +18,7 @@ rotate_sql_logs() {
   docker compose exec db rm /var/lib/postgresql/data/log/postgresql.log
   docker compose exec db psql \
     --username=dhis --dbname=dhis --set=application_name=log_rotator \
-    --quiet --command="SELECT pg_rotate_logfile();"
+    --quiet --output=/dev/null --command="SELECT pg_rotate_logfile();"
 }
 
 process_sql_logs() {
@@ -44,10 +44,12 @@ print_timing() {
 }
 
 print_cache_metrics() {
-  # TODO get metrics to show cache hits, note that the resource name should be extracted from the $API
-  # and be singular.
+  # Extract resource name from API path and make it singular
+  local resource_name=$(echo "$API" | sed 's/.*\/\([^?]*\).*/\1/' | sed 's/s$//')
+
+  echo "Cache metrics for $resource_name:"
   curl --silent --user admin:district --header 'accept: text/plain' \
-    "$BASE_URL/metrics" | grep --ignore-case organisationunit\"
+    "$BASE_URL/metrics" | grep --ignore-case "$resource_name\""
 }
 
 mkdir --parents ./profiler-output
