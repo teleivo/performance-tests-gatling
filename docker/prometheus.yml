@@ -19,8 +19,11 @@ scrape_configs:
     static_configs:
       - targets: ['node-exporter:9100']
 
-  - job_name: 'dhis2-metrics'
+  - job_name: 'dhis2'
     static_configs:
       - targets: ['web:8080']
     metrics_path: '/api/metrics'
     scrape_interval: 15s
+    basic_auth:
+      username: admin
+      password: district
