@@ -1,5 +1,5 @@
 #!/bin/bash
-# Request the same resource twice using the same user but different HTTP connections
+# Request the same resource multiple times using the same user but different HTTP connections
 #
 # Note:
 # curl --output is used so curl takes the processing of the JSON payload into account in its
@@ -16,7 +16,7 @@ PROF_ARGS=${PROF_ARGS:="-e cpu"}
 echo "Profiling requests to $API"
 
 rotate_sql_logs() {
-  # Remove existing and create a new PostgreSQL log
+  # Remove existing and create a new PostgreSQL log without having to restart Postgres
   docker compose exec db rm /var/lib/postgresql/data/log/postgresql.log
   docker compose exec db psql \
     --username=dhis --dbname=dhis --set=application_name=log_rotator \
@@ -32,7 +32,7 @@ process_sql_logs() {
     --outfile "./profiler-output/${name}-sql.html" "./profiler-output/${name}.log"
 }
 
-print_timing() {
+print_curl_timings() {
     local timing_output="$1"
     IFS=',' read -ra TIMING_ARRAY <<< "$timing_output"
 
@@ -66,7 +66,7 @@ docker compose exec --workdir /profiler-output web sh -c "asprof start $PROF_ARG
 
 TIMING_OUTPUT=$(curl --silent --output /tmp/dhis2-response.json --write-out "$TIMING_FORMAT" "$URL")
 FIRST_TOTAL_TIME=$(echo "$TIMING_OUTPUT" | cut -d',' -f6)
-print_timing "$TIMING_OUTPUT"
+print_curl_timings "$TIMING_OUTPUT"
 
 docker compose exec web sh -c 'asprof stop 1' > /dev/null
 
@@ -83,7 +83,7 @@ docker compose exec --workdir /profiler-output web sh -c "asprof start $PROF_ARG
 
 TIMING_OUTPUT=$(curl --silent --output /tmp/dhis2-response.json --write-out "$TIMING_FORMAT" "$URL")
 SECOND_TOTAL_TIME=$(echo "$TIMING_OUTPUT" | cut -d',' -f6)
-print_timing "$TIMING_OUTPUT"
+print_curl_timings "$TIMING_OUTPUT"
 
 docker compose exec web sh -c 'asprof stop 1' > /dev/null
 
