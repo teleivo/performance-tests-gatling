@@ -105,9 +105,7 @@ SECOND_TOTAL_TIME=$(get_http_total_time "$SECOND_TIMING")
 ADDITIONAL_REQUESTS=$(echo "scale=0; ($FIRST_TOTAL_TIME/$SECOND_TOTAL_TIME)-1" | bc -l)
 ADDITIONAL_REQUESTS=${ADDITIONAL_REQUESTS%.*}  # Remove decimal part if any
 # Ensure non-negative (no additional requests if second is slower)
-if (( $(echo "$ADDITIONAL_REQUESTS < 0" | bc -l) )); then
-    ADDITIONAL_REQUESTS=0
-else
+if (( $(echo "$ADDITIONAL_REQUESTS > 0" | bc -l) )); then
   echo "Making $ADDITIONAL_REQUESTS additional requests to balance profiling samples..."
   for i in $(seq 1 "$ADDITIONAL_REQUESTS"); do
       echo "Additional request $i/$ADDITIONAL_REQUESTS..."
@@ -122,6 +120,7 @@ docker compose cp db:/var/lib/postgresql/data/log/postgresql.log ./profiler-outp
 print_cache_metrics
 
 echo
+echo "Post processing:"
 # Convert to flamegraph and collapsed
 docker compose exec --workdir /profiler-output web sh -c "jfrconv first.jfr --title \"First $API took $FIRST_TOTAL_TIME\" first.html"
 docker compose exec --workdir /profiler-output web sh -c "jfrconv second.jfr --title \"Second $API took $SECOND_TOTAL_TIME\" second.html"
