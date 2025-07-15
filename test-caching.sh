@@ -57,6 +57,13 @@ print_cache_metrics() {
     "$BASE_URL/metrics" | grep --ignore-case "$resource_name\""
 }
 
+make_request() {
+  local timing_output
+  timing_output=$(curl --silent --output /tmp/dhis2-response.json --write-out "$TIMING_FORMAT" "$URL")
+  print_curl_timings "$timing_output"
+  echo "$timing_output"
+}
+
 mkdir --parents ./profiler-output
 
 echo "First request..."
@@ -64,9 +71,8 @@ rotate_sql_logs
 # Start profiling
 docker compose exec --workdir /profiler-output web sh -c "asprof start $PROF_ARGS -f first.jfr 1" > /dev/null
 
-TIMING_OUTPUT=$(curl --silent --output /tmp/dhis2-response.json --write-out "$TIMING_FORMAT" "$URL")
+TIMING_OUTPUT=$(make_request)
 FIRST_TOTAL_TIME=$(echo "$TIMING_OUTPUT" | cut -d',' -f6)
-print_curl_timings "$TIMING_OUTPUT"
 
 docker compose exec web sh -c 'asprof stop 1' > /dev/null
 
@@ -81,9 +87,21 @@ rotate_sql_logs
 # Start profiling
 docker compose exec --workdir /profiler-output web sh -c "asprof start $PROF_ARGS -f second.jfr 1" > /dev/null
 
-TIMING_OUTPUT=$(curl --silent --output /tmp/dhis2-response.json --write-out "$TIMING_FORMAT" "$URL")
+TIMING_OUTPUT=$(make_request)
 SECOND_TOTAL_TIME=$(echo "$TIMING_OUTPUT" | cut -d',' -f6)
-print_curl_timings "$TIMING_OUTPUT"
+
+# Calculate additional requests needed using formula x=(time1/time2)-1
+# Ensure at least 1 additional request if second is faster than first
+ADDITIONAL_REQUESTS=$(echo "scale=0; max=($FIRST_TOTAL_TIME/$SECOND_TOTAL_TIME)-1; if (max < 1) 1 else max" | bc -l)
+ADDITIONAL_REQUESTS=${ADDITIONAL_REQUESTS%.*}  # Remove decimal part if any
+
+echo "Making $ADDITIONAL_REQUESTS additional requests to balance profiling samples..."
+
+# Make additional requests while profiling is still active
+for i in $(seq 1 "$ADDITIONAL_REQUESTS"); do
+    echo "Additional request $i/$ADDITIONAL_REQUESTS..."
+    make_request
+done
 
 docker compose exec web sh -c 'asprof stop 1' > /dev/null
 
