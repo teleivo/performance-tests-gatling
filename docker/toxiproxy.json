@@ -1,8 +1,0 @@
-[
-  {
-    "name": "dhis2_core_web_1",
-    "listen": "[::]:18080",
-    "upstream": "web:8080",
-    "enabled": true
-  }
-]
