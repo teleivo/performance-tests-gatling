@@ -57,11 +57,18 @@ print_cache_metrics() {
     "$BASE_URL/metrics" | grep --ignore-case "$resource_name\""
 }
 
-make_request() {
-  local timing_output
-  timing_output=$(curl --silent --output /tmp/dhis2-response.json --write-out "$TIMING_FORMAT" "$URL")
+make_http_request() {
+  curl --silent --output /tmp/dhis2-response.json --write-out "$TIMING_FORMAT" "$URL"
+}
+
+print_http_timings() {
+  local timing_output="$1"
   print_curl_timings "$timing_output"
-  echo "$timing_output"
+}
+
+get_http_total_time() {
+  local timing_output="$1"
+  echo "$timing_output" | cut -d',' -f6
 }
 
 mkdir --parents ./profiler-output
@@ -71,8 +78,9 @@ rotate_sql_logs
 # Start profiling
 docker compose exec --workdir /profiler-output web sh -c "asprof start $PROF_ARGS -f first.jfr 1" > /dev/null
 
-TIMING_OUTPUT=$(make_request)
-FIRST_TOTAL_TIME=$(echo "$TIMING_OUTPUT" | cut -d',' -f6)
+FIRST_TIMING=$(make_http_request)
+print_http_timings "$FIRST_TIMING"
+FIRST_TOTAL_TIME=$(get_http_total_time "$FIRST_TIMING")
 
 docker compose exec web sh -c 'asprof stop 1' > /dev/null
 
@@ -87,21 +95,26 @@ rotate_sql_logs
 # Start profiling
 docker compose exec --workdir /profiler-output web sh -c "asprof start $PROF_ARGS -f second.jfr 1" > /dev/null
 
-TIMING_OUTPUT=$(make_request)
-SECOND_TOTAL_TIME=$(echo "$TIMING_OUTPUT" | cut -d',' -f6)
+SECOND_TIMING=$(make_http_request)
+print_http_timings "$SECOND_TIMING"
+SECOND_TOTAL_TIME=$(get_http_total_time "$SECOND_TIMING")
 
-# Calculate additional requests needed using formula x=(time1/time2)-1
-# Ensure at least 1 additional request if second is faster than first
-ADDITIONAL_REQUESTS=$(echo "scale=0; max=($FIRST_TOTAL_TIME/$SECOND_TOTAL_TIME)-1; if (max < 1) 1 else max" | bc -l)
+# Calculate additional requests.
+# This is to gather roughly the same amount of samples in case the second request is considerably
+# faster
+ADDITIONAL_REQUESTS=$(echo "scale=0; ($FIRST_TOTAL_TIME/$SECOND_TOTAL_TIME)-1" | bc -l)
 ADDITIONAL_REQUESTS=${ADDITIONAL_REQUESTS%.*}  # Remove decimal part if any
-
-echo "Making $ADDITIONAL_REQUESTS additional requests to balance profiling samples..."
-
-# Make additional requests while profiling is still active
-for i in $(seq 1 "$ADDITIONAL_REQUESTS"); do
-    echo "Additional request $i/$ADDITIONAL_REQUESTS..."
-    make_request
-done
+# Ensure non-negative (no additional requests if second is slower)
+if (( $(echo "$ADDITIONAL_REQUESTS < 0" | bc -l) )); then
+    ADDITIONAL_REQUESTS=0
+else
+  echo "Making $ADDITIONAL_REQUESTS additional requests to balance profiling samples..."
+  for i in $(seq 1 "$ADDITIONAL_REQUESTS"); do
+      echo "Additional request $i/$ADDITIONAL_REQUESTS..."
+      TIMING=$(make_http_request)
+      print_http_timings "$TIMING"
+  done
+fi
 
 docker compose exec web sh -c 'asprof stop 1' > /dev/null
 
