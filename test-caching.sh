@@ -11,6 +11,7 @@ BASE_URL="http://system:System123@localhost:8080/api"
 API=${API:="/organisationUnits?pageSize=2000&fields=:all,!name,!id,!favorites,!translations,!children,!sharing"}
 URL="$BASE_URL$API"
 TIMING_FORMAT="%{time_namelookup},%{time_connect},%{time_appconnect},%{time_pretransfer},%{time_starttransfer},%{time_total},%{size_download},%{speed_download}"
+PROF_ARGS=${PROF_ARGS:="-e cpu"}
 
 rotate_sql_logs() {
   # Remove existing and create a new PostgreSQL log
@@ -36,9 +37,17 @@ print_timing() {
     local LABELS=("DNS lookup" "TCP connect" "SSL handshake" "Transfer start" "First byte" "Total time" "Size" "Speed")
     local UNITS=("s" "s" "s" "s" "s" "s" " bytes" " bytes/sec")
 
+    echo
     for i in "${!TIMING_ARRAY[@]}"; do
         echo "${LABELS[$i]}: ${TIMING_ARRAY[$i]}${UNITS[$i]}"
     done
+}
+
+print_cache_metrics() {
+  # TODO get metrics to show cache hits, note that the resource name should be extracted from the $API
+  # and be singular.
+  curl --silent --user admin:district --header 'accept: text/plain' \
+    "$BASE_URL/metrics" | grep --ignore-case organisationunit\"
 }
 
 mkdir --parents ./profiler-output
@@ -46,16 +55,16 @@ mkdir --parents ./profiler-output
 echo "First request..."
 rotate_sql_logs
 # Start profiling
-docker compose exec --workdir /profiler-output web sh -c 'asprof start -e cpu -f first.jfr 1' > /dev/null
+docker compose exec --workdir /profiler-output web sh -c "asprof start $PROF_ARGS -f first.jfr 1" > /dev/null
 
 TIMING_OUTPUT=$(curl --silent --output /tmp/dhis2-response.json --write-out "$TIMING_FORMAT" "$URL")
 FIRST_TOTAL_TIME=$(echo "$TIMING_OUTPUT" | cut -d',' -f6)
-echo
 print_timing "$TIMING_OUTPUT"
 
 docker compose exec web sh -c 'asprof stop 1' > /dev/null
 
 docker compose cp db:/var/lib/postgresql/data/log/postgresql.log ./profiler-output/first.log
+print_cache_metrics
 
 sleep 1
 
@@ -63,16 +72,16 @@ echo
 echo "Second request..."
 rotate_sql_logs
 # Start profiling
-docker compose exec --workdir /profiler-output web sh -c 'asprof start -e cpu -f second.jfr 1' > /dev/null
+docker compose exec --workdir /profiler-output web sh -c "asprof start $PROF_ARGS -f second.jfr 1" > /dev/null
 
 TIMING_OUTPUT=$(curl --silent --output /tmp/dhis2-response.json --write-out "$TIMING_FORMAT" "$URL")
 SECOND_TOTAL_TIME=$(echo "$TIMING_OUTPUT" | cut -d',' -f6)
-echo
 print_timing "$TIMING_OUTPUT"
 
 docker compose exec web sh -c 'asprof stop 1' > /dev/null
 
 docker compose cp db:/var/lib/postgresql/data/log/postgresql.log ./profiler-output/second.log
+print_cache_metrics
 
 echo
 # Convert to flamegraph and collapsed

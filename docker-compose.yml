@@ -181,5 +181,5 @@ services:
 
 volumes:
   db-dump: {}
-  prometheus:
-  grafana:
+  prometheus: {}
+  grafana: {}
