@@ -13,6 +13,8 @@ URL="$BASE_URL$API"
 TIMING_FORMAT="%{time_namelookup},%{time_connect},%{time_appconnect},%{time_pretransfer},%{time_starttransfer},%{time_total},%{size_download},%{speed_download}"
 PROF_ARGS=${PROF_ARGS:="-e cpu"}
 
+echo "Profiling requests to $API"
+
 rotate_sql_logs() {
   # Remove existing and create a new PostgreSQL log
   docker compose exec db rm /var/lib/postgresql/data/log/postgresql.log
@@ -38,6 +40,7 @@ print_timing() {
     local UNITS=("s" "s" "s" "s" "s" "s" " bytes" " bytes/sec")
 
     echo
+    echo "HTTP timings:"
     for i in "${!TIMING_ARRAY[@]}"; do
         echo "${LABELS[$i]}: ${TIMING_ARRAY[$i]}${UNITS[$i]}"
     done
@@ -45,9 +48,11 @@ print_timing() {
 
 print_cache_metrics() {
   # Extract resource name from API path and make it singular
-  local resource_name=$(echo "$API" | sed 's/.*\/\([^?]*\).*/\1/' | sed 's/s$//')
+  local resource_name
+  resource_name=$(echo "$API" | sed 's/.*\/\([^?]*\).*/\1/' | sed 's/s$//')
 
-  echo "Cache metrics for $resource_name:"
+  echo
+  echo "Cache metrics:"
   curl --silent --user admin:district --header 'accept: text/plain' \
     "$BASE_URL/metrics" | grep --ignore-case "$resource_name\""
 }
