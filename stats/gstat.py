@@ -1307,8 +1307,9 @@ def plot_scatter_all(gatling_data: GatlingData) -> go.Figure:
             title=dict(font=dict(size=16)),
             showgrid=True,
             gridcolor="rgba(128, 128, 128, 0.3)",
-            tickformat=".0f",
-            ticksuffix=" ms",
+            tickmode="linear",
+            tick0=0,
+            dtick=10,
         ),
         yaxis=dict(title=dict(font=dict(size=16))),
     )
