@@ -31,10 +31,15 @@ services:
   # https://github.com/mastodon/mastodon/blob/fb6c22f5c275685aa644d84c003e1d6922e15d40/docker-compose.yml#L8
   # https://wiki.postgresql.org/wiki/Tuning_Your_PostgreSQL_Server
   db:
-    image: postgis/postgis:13-3.5
+    build:
+      context: ./docker
+      dockerfile: Dockerfile.postgres
+      args:
+        POSTGRES_BASE_IMAGE: postgis/postgis:13-3.5
+        DHIS2_DB_DUMP_URL: "${DHIS2_DB_DUMP_URL:-https://databases.dhis2.org/sierra-leone/2.42.0/dhis2-db-sierra-leone.sql.gz}"
+    image: dhis2-postgres:13-3.5-sierra-leone-2.42.0
     mem_limit: 16gb
     shm_size: 256mb
-    command: -c config_file=/etc/postgresql.conf
     # TODO move this into a postgres.conf and use profiles or so to switch?
     # command:
     #   - postgres
@@ -58,7 +63,6 @@ services:
       # temp_buffers = 16MB # TODO can I see the need/effect of this?
       # TODO try https://www.postgresql.org/docs/9.3/runtime-config-logging.html#GUC-LOG-TEMP-FILES
     volumes:
-      - db-dump:/docker-entrypoint-initdb.d/
       - ./docker/test-performance-dhis2-org-postgresql.conf:/etc/postgresql.conf
     environment:
       POSTGRES_USER: &postgres_user dhis
@@ -80,18 +84,8 @@ services:
       retries: 5
     ports:
       - "127.0.0.1:32769:5432"
-    depends_on:
-      db-dump:
-        condition: service_completed_successfully # make sure the DB dump has been downloaded
+    depends_on: []
 
-  db-dump:
-    image: busybox # busybox wget version does not have --no-clobber, so we need to do the [ -f ] test
-    command: sh -c '[ -f dump.sql.gz ] && echo "dump.sql.gz exists" || wget --output-document dump.sql.gz $$DHIS2_DB_DUMP_URL' # only download file if it does not exist
-    environment:
-      DHIS2_DB_DUMP_URL: "${DHIS2_DB_DUMP_URL:-https://databases.dhis2.org/sierra-leone/2.42.0/dhis2-db-sierra-leone.sql.gz}"
-    working_dir: /opt/dump
-    volumes:
-      - db-dump:/opt/dump
 
   tcpdump:
     profiles:
@@ -185,6 +179,5 @@ services:
       - '--collector.filesystem.ignored-mount-points=^/(sys|proc|dev|host|etc)($$|/)'
 
 volumes:
-  db-dump: {}
   prometheus: {}
   grafana: {}
