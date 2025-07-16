@@ -42,6 +42,7 @@ public class OrganisationUnitsTest extends Simulation {
   public OrganisationUnitsTest() {
     String baseUrl = System.getProperty("instance", "http://localhost:8080");
     String repeat = System.getProperty("repeat", "100");
+    // String pageSize = System.getProperty("pageSize");
     // TODO maybe try this to see the effect on the response times
     // https://docs.gatling.io/concepts/scenario/#pace
     // String pause = System.getProperty("pause", "0");
@@ -81,6 +82,9 @@ public class OrganisationUnitsTest extends Simulation {
     // to be more accurate
     String query =
         "/api/organisationUnits?fields=:all,!name,!id,!favorites,!translations,!children,!sharing&pageSize=2000";
+    // if (pageSize != null) {
+    //
+    //     }
     ScenarioBuilder scenario =
         scenario(query)
             .repeat(Integer.parseInt(repeat))

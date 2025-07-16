@@ -1,5 +1,8 @@
 #!/bin/bash
-# Pre-process and generate reports for local runs in target/gatling
+# Pre-process and generate reports for local runs from BASE_DIR
+
+BASE_DIR=${BASE_DIR:="target/gatling"}
+RUN=${RUN:=$(cat "$BASE_DIR/lastRun.txt")}
 
 # Parse command line arguments
 SQL_FLAG=false
@@ -28,14 +31,12 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-RUN=${RUN:=$(cat target/gatling/lastRun.txt)}
-
 # extract raw Gatling data from binary simulation.log
 glog \
   --config ./src/test/resources/gatling.conf \
-  "target/gatling/$RUN"
+  "$BASE_DIR/$RUN"
 
-RUN_LOG="target/gatling/$RUN/simulation.csv"
+RUN_LOG="$BASE_DIR/$RUN/simulation.csv"
 
 # Extract first start_timestamp and last end_timestamp for record_type request
 # Note: CSV contains quoted request names with commas which breaks normal field parsing
@@ -64,8 +65,8 @@ if [[ $SQL_FLAG = true ]]; then
   open pgbadger.html
 fi
 
-gstat --plot scatter "target/gatling/$RUN"
+gstat --plot scatter "$BASE_DIR/$RUN"
 
 if [[ $GATLING_FLAG = true ]]; then
-  open "target/gatling/$RUN/index.html"
+  open "$BASE_DIR/$RUN/index.html"
 fi

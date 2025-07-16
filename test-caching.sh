@@ -1,4 +1,5 @@
 #!/bin/bash
+set -e
 # Request the same resource multiple times using the same user but different HTTP connections
 #
 # Note:
@@ -15,30 +16,23 @@ PROF_ARGS=${PROF_ARGS:="-e cpu"}
 # This is to gather more samples in case the second request is considerably faster
 ADDITIONAL_REQUESTS=${ADDITIONAL_REQUESTS:=0}
 
-# Extract events from PROF_ARGS and create suffix for file naming
-extract_event_suffix() {
+# Parse PROF_ARGS to extract event and thread flags for jfrconv
+parse_prof_args() {
   local prof_args="$1"
-  local events=""
 
-  # Extract events after -e flag(s)
-  while [[ $prof_args =~ -e[[:space:]]+([^[:space:]]+) ]]; do
-    local event="${BASH_REMATCH[1]}"
-    if [[ -n "$events" ]]; then
-      events="$events,$event"
-    else
-      events="$event"
-    fi
-    prof_args="${prof_args/${BASH_REMATCH[0]}/}"
-  done
+  # Extract single event after -e flag - fail if not found
+  [[ $prof_args =~ -e[[:space:]]+([^[:space:]]+) ]] || return 1
+  EVENT_FLAG="${BASH_REMATCH[1]}"
 
-  # Replace commas with dashes
-  echo "${events//,/-}"
+  # Check for threads flag
+  if [[ $prof_args =~ -t|--threads ]]; then
+    THREAD_FLAG="threads"
+  else
+    THREAD_FLAG=""
+  fi
 }
 
-EVENT_SUFFIX=$(extract_event_suffix "$PROF_ARGS")
-if [[ -z "$EVENT_SUFFIX" ]]; then
-  EVENT_SUFFIX="unknown"
-fi
+parse_prof_args "$PROF_ARGS"
 
 echo "Profiling requests to $API"
 
@@ -107,7 +101,7 @@ mkdir --parents ./profiler-output
 echo "First request..."
 rotate_sql_logs
 # Start profiling
-docker compose exec --workdir /profiler-output web sh -c "asprof start $PROF_ARGS -f first-${EVENT_SUFFIX}.jfr 1" > /dev/null
+docker compose exec --workdir /profiler-output web sh -c "asprof start $PROF_ARGS -f first-${EVENT_FLAG}.jfr 1" > /dev/null
 
 FIRST_TIMING=$(make_http_request)
 print_http_timings "$FIRST_TIMING"
@@ -115,7 +109,7 @@ FIRST_TOTAL_TIME=$(get_http_total_time "$FIRST_TIMING")
 
 docker compose exec web sh -c 'asprof stop 1' > /dev/null
 
-docker compose cp db:/var/lib/postgresql/data/log/postgresql.log "./profiler-output/first-${EVENT_SUFFIX}.log"
+docker compose cp db:/var/lib/postgresql/data/log/postgresql.log "./profiler-output/first-${EVENT_FLAG}.log"
 print_cache_metrics
 
 sleep 1
@@ -124,7 +118,7 @@ echo
 echo "Second request..."
 rotate_sql_logs
 # Start profiling
-docker compose exec --workdir /profiler-output web sh -c "asprof start $PROF_ARGS -f second-${EVENT_SUFFIX}.jfr 1" > /dev/null
+docker compose exec --workdir /profiler-output web sh -c "asprof start $PROF_ARGS -f second-${EVENT_FLAG}.jfr 1" > /dev/null
 
 SECOND_TIMING=$(make_http_request)
 print_http_timings "$SECOND_TIMING"
@@ -142,21 +136,32 @@ fi
 
 docker compose exec web sh -c 'asprof stop 1' > /dev/null
 
-docker compose cp db:/var/lib/postgresql/data/log/postgresql.log "./profiler-output/second-${EVENT_SUFFIX}.log"
+docker compose cp db:/var/lib/postgresql/data/log/postgresql.log "./profiler-output/second-${EVENT_FLAG}.log"
 print_cache_metrics
 
 echo
 echo "Post processing:"
+
+# Build jfrconv flags
+JFRCONV_FLAGS="--${EVENT_FLAG}"
+if [[ -n "$THREAD_FLAG" ]]; then
+  JFRCONV_FLAGS="$JFRCONV_FLAGS --${THREAD_FLAG}"
+fi
+# Add --total for allocation and lock events
+if [[ "$EVENT_FLAG" == "alloc" || "$EVENT_FLAG" == "lock" ]]; then
+  JFRCONV_FLAGS="$JFRCONV_FLAGS --total"
+fi
+
 # Convert to flamegraph and collapsed
 docker compose exec --workdir /profiler-output web \
-  sh -c "jfrconv first-${EVENT_SUFFIX}.jfr --title \"First $API took $FIRST_TOTAL_TIME (async-prof $PROF_ARGS)\" first-${EVENT_SUFFIX}.html"
+  sh -c "jfrconv $JFRCONV_FLAGS first-${EVENT_FLAG}.jfr --title \"First $API took $FIRST_TOTAL_TIME (async-prof $PROF_ARGS)\" first-${EVENT_FLAG}.html"
 docker compose exec --workdir /profiler-output web \
-  sh -c "jfrconv second-${EVENT_SUFFIX}.jfr --title \"Second $API took $SECOND_TOTAL_TIME (async-prof $PROF_ARGS)\" second-${EVENT_SUFFIX}.html"
+  sh -c "jfrconv $JFRCONV_FLAGS second-${EVENT_FLAG}.jfr --title \"Second $API took $SECOND_TOTAL_TIME (async-prof $PROF_ARGS)\" second-${EVENT_FLAG}.html"
 docker compose exec --workdir /profiler-output web \
-  sh -c "jfrconv first-${EVENT_SUFFIX}.jfr first-${EVENT_SUFFIX}.collapsed"
+  sh -c "jfrconv $JFRCONV_FLAGS first-${EVENT_FLAG}.jfr first-${EVENT_FLAG}.collapsed"
 docker compose exec --workdir /profiler-output web \
-  sh -c "jfrconv second-${EVENT_SUFFIX}.jfr second-${EVENT_SUFFIX}.collapsed"
+  sh -c "jfrconv $JFRCONV_FLAGS second-${EVENT_FLAG}.jfr second-${EVENT_FLAG}.collapsed"
 docker compose cp web:/profiler-output ./
-process_sql_logs "first-${EVENT_SUFFIX}"
-process_sql_logs "second-${EVENT_SUFFIX}"
+process_sql_logs "first-${EVENT_FLAG}"
+process_sql_logs "second-${EVENT_FLAG}"
 echo "Flamegraphs and PostgreSQL logs saved to ./profiler-output"

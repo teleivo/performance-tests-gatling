@@ -1085,7 +1085,6 @@ def plot_scatter(gatling_data: GatlingData) -> go.Figure:
             tickangle=45,
             showgrid=True,
             gridcolor="rgba(128, 128, 128, 0.3)",
-            dtick=1000,  # 1 second intervals (1000ms)
         ),
         yaxis=dict(title=dict(font=dict(size=16))),
         updatemenus=updatemenus,
