@@ -43,16 +43,6 @@ rotate_sql_logs() {
     --quiet --output=/dev/null --command="SELECT pg_rotate_logfile();"
 }
 
-process_sql_logs() {
-  local name="$1"
-  local output_dir="$2"
-  pgbadger \
-    --title "$name" \
-    --prefix '%t [%p]: user=%u,db=%d,app=%a ' \
-    --dbname dhis \
-    --outfile "$output_dir/${name}-sql.html" "$output_dir/${name}.log"
-}
-
 wait_for_health() {
   echo "Waiting for DHIS2 to start..."
   local start_time
@@ -157,5 +147,5 @@ done
 
 docker compose -f docker-compose.yml -f docker-compose.profile.yml down --volumes
 # convert Gatlings' binary simulation.log to simulation.csv
-glog --config src/test/resources/gatling.conf --scan-subdirs "target/gatling"
+glog --config ./src/test/resources/gatling.conf --scan-subdirs target/gatling
 
