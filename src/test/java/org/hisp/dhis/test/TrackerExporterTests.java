@@ -42,6 +42,7 @@ public class TrackerExporterTests extends Simulation {
   public TrackerExporterTests() {
     String baseUrl = System.getProperty("instance", "http://localhost:8080");
     String repeat = System.getProperty("repeat", "100");
+    String pageSize = System.getProperty("pageSize");
     // TODO maybe try this to see the effect on the response times
     // https://docs.gatling.io/concepts/scenario/#pace
     // String pause = System.getProperty("pause", "0");
@@ -92,6 +93,11 @@ public class TrackerExporterTests extends Simulation {
         "/api/tracker/events?program="
             + program
             + "&pageSize=100&totalPages=true&occurredAfter=2024-01-01&occurredBefore=2024-12-31";
+    if (pageSize != null) {
+      query = "/api/tracker/events?program="
+          + program
+          + "&pageSize=" + pageSize + "&totalPages=true&occurredAfter=2024-01-01&occurredBefore=2024-12-31";
+    }
     ScenarioBuilder scenario =
         scenario(query)
             .repeat(Integer.parseInt(repeat))
