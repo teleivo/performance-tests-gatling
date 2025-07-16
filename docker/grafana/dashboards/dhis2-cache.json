@@ -32,7 +32,7 @@
       },
       "id": 1,
       "panels": [],
-      "title": "Overall Cache Performance",
+      "title": "Overall Cache Metrics",
       "type": "row"
     },
     {
@@ -123,7 +123,7 @@
           "refId": "A"
         }
       ],
-      "title": "Total Cache Hit Rate",
+      "title": "Hibernate L2 (EhCache) Total Hit Rate",
       "type": "timeseries"
     },
     {
@@ -222,7 +222,7 @@
           "refId": "B"
         }
       ],
-      "title": "Cache Activity Overview",
+      "title": "Hibernate L2 (EhCache) Activity Overview",
       "type": "timeseries"
     },
     {
@@ -311,7 +311,7 @@
           "refId": "A"
         }
       ],
-      "title": "Cache Eviction Rate",
+      "title": "Hibernate L2 (EhCache) Eviction Rate",
       "type": "timeseries"
     },
     {
@@ -324,7 +324,7 @@
       },
       "id": 5,
       "panels": [],
-      "title": "Entity-Specific Analysis",
+      "title": "Entity-Specific Metrics",
       "type": "row"
     },
     {
@@ -415,7 +415,7 @@
           "refId": "A"
         }
       ],
-      "title": "Entity Cache Hit Rate",
+      "title": "Hibernate L2 (EhCache) Entity Hit Rate",
       "type": "timeseries"
     },
     {
@@ -514,7 +514,7 @@
           "refId": "B"
         }
       ],
-      "title": "Entity Cache Operations",
+      "title": "Hibernate L2 (EhCache) Entity Operations",
       "type": "timeseries"
     },
     {
@@ -867,8 +867,8 @@
       "gridPos": {
         "h": 8,
         "w": 8,
-        "x": 0,
-        "y": 19
+        "x": 16,
+        "y": 1
       },
       "id": 9,
       "options": {
@@ -900,7 +900,7 @@
           "refId": "A"
         }
       ],
-      "title": "Top Cache Regions by Activity",
+      "title": "Hibernate L2 (EhCache) Top Regions by Activity",
       "type": "piechart"
     },
     {
@@ -962,7 +962,7 @@
       "gridPos": {
         "h": 8,
         "w": 8,
-        "x": 8,
+        "x": 0,
         "y": 19
       },
       "id": 10,
@@ -989,7 +989,7 @@
           "refId": "A"
         }
       ],
-      "title": "Entity Cache Evictions",
+      "title": "Hibernate L2 (EhCache) Entity Evictions",
       "type": "timeseries"
     },
     {
@@ -1057,7 +1057,7 @@
       "gridPos": {
         "h": 8,
         "w": 8,
-        "x": 16,
+        "x": 8,
         "y": 28
       },
       "id": 11,
@@ -1084,7 +1084,7 @@
           "refId": "A"
         }
       ],
-      "title": "Highest Miss Rates (Top 5)",
+      "title": "Hibernate L2 (EhCache) Highest Miss Rates (Top 5)",
       "type": "timeseries"
     }
   ],
