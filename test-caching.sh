@@ -15,6 +15,31 @@ PROF_ARGS=${PROF_ARGS:="-e cpu"}
 # This is to gather more samples in case the second request is considerably faster
 ADDITIONAL_REQUESTS=${ADDITIONAL_REQUESTS:=0}
 
+# Extract events from PROF_ARGS and create suffix for file naming
+extract_event_suffix() {
+  local prof_args="$1"
+  local events=""
+
+  # Extract events after -e flag(s)
+  while [[ $prof_args =~ -e[[:space:]]+([^[:space:]]+) ]]; do
+    local event="${BASH_REMATCH[1]}"
+    if [[ -n "$events" ]]; then
+      events="$events,$event"
+    else
+      events="$event"
+    fi
+    prof_args="${prof_args/${BASH_REMATCH[0]}/}"
+  done
+
+  # Replace commas with dashes
+  echo "${events//,/-}"
+}
+
+EVENT_SUFFIX=$(extract_event_suffix "$PROF_ARGS")
+if [[ -z "$EVENT_SUFFIX" ]]; then
+  EVENT_SUFFIX="unknown"
+fi
+
 echo "Profiling requests to $API"
 
 rotate_sql_logs() {
@@ -82,7 +107,7 @@ mkdir --parents ./profiler-output
 echo "First request..."
 rotate_sql_logs
 # Start profiling
-docker compose exec --workdir /profiler-output web sh -c "asprof start $PROF_ARGS -f first.jfr 1" > /dev/null
+docker compose exec --workdir /profiler-output web sh -c "asprof start $PROF_ARGS -f first-${EVENT_SUFFIX}.jfr 1" > /dev/null
 
 FIRST_TIMING=$(make_http_request)
 print_http_timings "$FIRST_TIMING"
@@ -90,7 +115,7 @@ FIRST_TOTAL_TIME=$(get_http_total_time "$FIRST_TIMING")
 
 docker compose exec web sh -c 'asprof stop 1' > /dev/null
 
-docker compose cp db:/var/lib/postgresql/data/log/postgresql.log ./profiler-output/first.log
+docker compose cp db:/var/lib/postgresql/data/log/postgresql.log "./profiler-output/first-${EVENT_SUFFIX}.log"
 print_cache_metrics
 
 sleep 1
@@ -99,7 +124,7 @@ echo
 echo "Second request..."
 rotate_sql_logs
 # Start profiling
-docker compose exec --workdir /profiler-output web sh -c "asprof start $PROF_ARGS -f second.jfr 1" > /dev/null
+docker compose exec --workdir /profiler-output web sh -c "asprof start $PROF_ARGS -f second-${EVENT_SUFFIX}.jfr 1" > /dev/null
 
 SECOND_TIMING=$(make_http_request)
 print_http_timings "$SECOND_TIMING"
@@ -117,17 +142,21 @@ fi
 
 docker compose exec web sh -c 'asprof stop 1' > /dev/null
 
-docker compose cp db:/var/lib/postgresql/data/log/postgresql.log ./profiler-output/second.log
+docker compose cp db:/var/lib/postgresql/data/log/postgresql.log "./profiler-output/second-${EVENT_SUFFIX}.log"
 print_cache_metrics
 
 echo
 echo "Post processing:"
 # Convert to flamegraph and collapsed
-docker compose exec --workdir /profiler-output web sh -c "jfrconv first.jfr --title \"First $API took $FIRST_TOTAL_TIME\" first.html"
-docker compose exec --workdir /profiler-output web sh -c "jfrconv second.jfr --title \"Second $API took $SECOND_TOTAL_TIME\" second.html"
-docker compose exec --workdir /profiler-output web sh -c 'jfrconv first.jfr first.collapsed'
-docker compose exec --workdir /profiler-output web sh -c 'jfrconv second.jfr second.collapsed'
+docker compose exec --workdir /profiler-output web \
+  sh -c "jfrconv first-${EVENT_SUFFIX}.jfr --title \"First $API took $FIRST_TOTAL_TIME (async-prof $PROF_ARGS)\" first-${EVENT_SUFFIX}.html"
+docker compose exec --workdir /profiler-output web \
+  sh -c "jfrconv second-${EVENT_SUFFIX}.jfr --title \"Second $API took $SECOND_TOTAL_TIME (async-prof $PROF_ARGS)\" second-${EVENT_SUFFIX}.html"
+docker compose exec --workdir /profiler-output web \
+  sh -c "jfrconv first-${EVENT_SUFFIX}.jfr first-${EVENT_SUFFIX}.collapsed"
+docker compose exec --workdir /profiler-output web \
+  sh -c "jfrconv second-${EVENT_SUFFIX}.jfr second-${EVENT_SUFFIX}.collapsed"
 docker compose cp web:/profiler-output ./
-process_sql_logs "first"
-process_sql_logs "second"
+process_sql_logs "first-${EVENT_SUFFIX}"
+process_sql_logs "second-${EVENT_SUFFIX}"
 echo "Flamegraphs and PostgreSQL logs saved to ./profiler-output"
