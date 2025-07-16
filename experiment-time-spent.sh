@@ -98,9 +98,9 @@ post_process_profiler_data() {
   local title="$TEST on $image_name (async-profiler $PROF_ARGS)"
   # generate flamegraph and collapsed stack traces using jfrconv from async-profiler
   docker compose exec --workdir /profiler-output web \
-    sh -c "jfrconv $jfrconv_flags profile.jfr --title \"$title\" profile.html"
+    sh -c "jfrconv $jfrconv_flags --dot --title \"$title\" profile.jfr profile.html"
   docker compose exec --workdir /profiler-output web \
-    sh -c "jfrconv $jfrconv_flags profile.jfr profile.collapsed"
+    sh -c "jfrconv $jfrconv_flags --dot profile.jfr profile.collapsed"
 
   docker compose cp web:/profiler-output/. "$gatling_dir/"
 

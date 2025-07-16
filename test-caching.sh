@@ -154,13 +154,13 @@ fi
 
 # Convert to flamegraph and collapsed
 docker compose exec --workdir /profiler-output web \
-  sh -c "jfrconv $JFRCONV_FLAGS first-${EVENT_FLAG}.jfr --title \"First $API took $FIRST_TOTAL_TIME (async-prof $PROF_ARGS)\" first-${EVENT_FLAG}.html"
+  sh -c "jfrconv $JFRCONV_FLAGS --dot --title \"First $API took $FIRST_TOTAL_TIME (async-prof $PROF_ARGS)\" first-${EVENT_FLAG}.jfr first-${EVENT_FLAG}.html"
 docker compose exec --workdir /profiler-output web \
-  sh -c "jfrconv $JFRCONV_FLAGS second-${EVENT_FLAG}.jfr --title \"Second $API took $SECOND_TOTAL_TIME (async-prof $PROF_ARGS)\" second-${EVENT_FLAG}.html"
+  sh -c "jfrconv $JFRCONV_FLAGS --dot --title \"Second $API took $SECOND_TOTAL_TIME (async-prof $PROF_ARGS)\" second-${EVENT_FLAG}.jfr second-${EVENT_FLAG}.html"
 docker compose exec --workdir /profiler-output web \
-  sh -c "jfrconv $JFRCONV_FLAGS first-${EVENT_FLAG}.jfr first-${EVENT_FLAG}.collapsed"
+  sh -c "jfrconv $JFRCONV_FLAGS --dot first-${EVENT_FLAG}.jfr first-${EVENT_FLAG}.collapsed"
 docker compose exec --workdir /profiler-output web \
-  sh -c "jfrconv $JFRCONV_FLAGS second-${EVENT_FLAG}.jfr second-${EVENT_FLAG}.collapsed"
+  sh -c "jfrconv $JFRCONV_FLAGS --dot second-${EVENT_FLAG}.jfr second-${EVENT_FLAG}.collapsed"
 docker compose cp web:/profiler-output ./
 process_sql_logs "first-${EVENT_FLAG}"
 process_sql_logs "second-${EVENT_FLAG}"
