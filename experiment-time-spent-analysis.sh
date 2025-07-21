@@ -16,7 +16,7 @@ if [ $# -ne 1 ]; then
 fi
 
 DIR="$1"
-TEMP_DATA="/tmp/field_filtering_data.dat"
+TEMP_DATA="/tmp/analysis.dat"
 echo "# pageSize overhead_50th overhead_95th" > "$TEMP_DATA"
 
 for dir in "$DIR"/*-page-*/; do
@@ -57,15 +57,15 @@ request_name=$(grep "^request," "$first_sim_csv" | head -n 1 | sed 's/.*"\([^"]*
 
 cat > /tmp/plot.gp << EOF
 set terminal pngcairo size 1000,600
-set output '$DIR/field-filtering-overhead.png'
+set output '$DIR/analysis.png'
 set title "Difference in response times for requests against instance with and without field filtering\\n$request_name"
 set xlabel "pageSize"
 set ylabel "Field filtering cost (ms)"
 set key top left
-plot '/tmp/field_filtering_data.dat' using 1:2 with linespoints title "50th percentile" lw 2, \
-     '/tmp/field_filtering_data.dat' using 1:3 with linespoints title "95th percentile" lw 2
+plot '/tmp/analysis.dat' using 1:2 with linespoints title "50th percentile" lw 2, \
+     '/tmp/analysis.dat' using 1:3 with linespoints title "95th percentile" lw 2
 EOF
 
 gnuplot /tmp/plot.gp
-echo "Plot saved as $DIR/field-filtering-overhead.png"
+echo "Plot saved as $DIR/analysis.png"
 rm -f "$TEMP_DATA" /tmp/plot.gp
