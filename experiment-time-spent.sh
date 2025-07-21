@@ -13,13 +13,13 @@ trap cleanup INT
 
 DHIS2_IMAGES=(
   "dhis2/core:42.0"
-  "dhis2/core-dev:42.0-local-no-ehcache-no-system-cache"
+  # "dhis2/core-dev:42.0-local-no-ehcache-no-system-cache"
   "dhis2/core-dev:42.0-local-no-fieldfiltering"
 )
 
 PROF_ARGS=${PROF_ARGS:="-e cpu"}
 TEST=${TEST:="OrganisationUnitsTest"}
-TEST_ARGS=${TEST_ARGS:="-DpageSize=2000"}
+TEST_ARGS=${TEST_ARGS:="-DpageSize=50"}
 
 parse_prof_args() {
   local prof_args="$1"

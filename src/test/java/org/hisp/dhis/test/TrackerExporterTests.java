@@ -92,11 +92,9 @@ public class TrackerExporterTests extends Simulation {
     String query =
         "/api/tracker/events?program="
             + program
-            + "&pageSize=100&totalPages=true&occurredAfter=2024-01-01&occurredBefore=2024-12-31";
+            + "&totalPages=true&occurredAfter=2024-01-01&occurredBefore=2024-12-31";
     if (pageSize != null) {
-      query = "/api/tracker/events?program="
-          + program
-          + "&pageSize=" + pageSize + "&totalPages=true&occurredAfter=2024-01-01&occurredBefore=2024-12-31";
+      query = query + "&pageSize=" + pageSize;
     }
     ScenarioBuilder scenario =
         scenario(query)

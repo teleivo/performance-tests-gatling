@@ -81,9 +81,9 @@ public class OrganisationUnitsTest extends Simulation {
     // get a 100 requests per run irrespective of the response times so comparisons are likely
     // to be more accurate
     String query =
-        "/api/organisationUnits?fields=:all,!name,!id,!favorites,!translations,!children,!sharing&pageSize=2000";
+        "/api/organisationUnits?fields=:all,!name,!id,!favorites,!translations,!children,!sharing";
     if (pageSize != null) {
-      query = "/api/organisationUnits?fields=:all,!name,!id,!favorites,!translations,!children,!sharing&pageSize=" + pageSize;
+      query = query + "&pageSize=" + pageSize;
     }
     ScenarioBuilder scenario =
         scenario(query)
