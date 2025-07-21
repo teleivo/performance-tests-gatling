@@ -1,11 +1,25 @@
 #!/bin/bash
+# Analyze the output of running ./experiment-time-spent.sh
+# It assumes the given dir has Gatling performance test runs created using
+# ./experiment-time-spent.sh where each call of the script has a different value for the variable
+# you test for. For example to see how `pageSize` affects the cost of field filtering we would
+# collect data like
+# ls runs-with-different-pagesizes
+# orgunits-page-0050  orgunits-page-0200  orgunits-page-0400  orgunits-page-0750  orgunits-page-1250
+# orgunits-page-0100  orgunits-page-0300  orgunits-page-0500  orgunits-page-1000  orgunits-page-1500
 
 set -e
 
+if [ $# -ne 1 ]; then
+    echo "Usage: $0 <directory>"
+    exit 1
+fi
+
+DIR="$1"
 TEMP_DATA="/tmp/field_filtering_data.dat"
 echo "# pageSize overhead_50th overhead_95th" > "$TEMP_DATA"
 
-for dir in present-fields-all/orgunits-page-*/; do
+for dir in "$DIR"/*-page-*/; do
     [ ! -d "$dir" ] && continue
 
     # Skip if no simulation.csv files found
@@ -37,13 +51,13 @@ for dir in present-fields-all/orgunits-page-*/; do
 done
 
 # Extract request name from first simulation.csv file for title
-first_sim_csv=$(find present-fields-all/orgunits-page-*/*/simulation.csv | head -n 1)
+first_sim_csv=$(find "$DIR"/*-page-*/*/simulation.csv | head -n 1)
 # Find the first request line and extract everything between quotes, escape & for gnuplot
 request_name=$(grep "^request," "$first_sim_csv" | head -n 1 | sed 's/.*"\([^"]*\)".*/\1/' | sed 's/&/\\\\&/g')
 
 cat > /tmp/plot.gp << EOF
 set terminal pngcairo size 1000,600
-set output 'field-filtering-overhead.png'
+set output '$DIR/field-filtering-overhead.png'
 set title "Difference in response times for requests against instance with and without field filtering\\n$request_name"
 set xlabel "pageSize"
 set ylabel "Field filtering cost (ms)"
@@ -53,5 +67,5 @@ plot '/tmp/field_filtering_data.dat' using 1:2 with linespoints title "50th perc
 EOF
 
 gnuplot /tmp/plot.gp
-echo "Plot saved as field-filtering-overhead.png"
+echo "Plot saved as $DIR/field-filtering-overhead.png"
 rm -f "$TEMP_DATA" /tmp/plot.gp
