@@ -10,6 +10,7 @@ for dir in present-fields-all/orgunits-page-*/; do
 
     # Skip if no simulation.csv files found
     if ! ls "$dir"/*/simulation.csv >/dev/null 2>&1; then
+        echo "Warning: No simulation.csv found in $dir"
         continue
     fi
 
@@ -35,20 +36,22 @@ for dir in present-fields-all/orgunits-page-*/; do
     echo "$page_size $overhead_50th $overhead_95th" >> "$TEMP_DATA"
 done
 
-# Sort data by page size
-sort -n "$TEMP_DATA" > "${TEMP_DATA}.sorted"
+# Extract request name from first simulation.csv file for title
+first_sim_csv=$(find present-fields-all/orgunits-page-*/*/simulation.csv | head -n 1)
+# Find the first request line and extract everything between quotes, escape & for gnuplot
+request_name=$(grep "^request," "$first_sim_csv" | head -n 1 | sed 's/.*"\([^"]*\)".*/\1/' | sed 's/&/\\\\&/g')
 
-cat > /tmp/plot.gp << 'EOF'
+cat > /tmp/plot.gp << EOF
 set terminal pngcairo size 1000,600
 set output 'field-filtering-overhead.png'
-set title "Field Filtering Overhead vs Page Size"
-set xlabel "Page Size"
-set ylabel "Overhead (ms)"
+set title "Difference in response times for requests against instance with and without field filtering\\n$request_name"
+set xlabel "pageSize"
+set ylabel "Field filtering cost (ms)"
 set key top left
-plot '/tmp/field_filtering_data.dat.sorted' using 1:2 with linespoints title "50th percentile" lw 2, \
-     '/tmp/field_filtering_data.dat.sorted' using 1:3 with linespoints title "95th percentile" lw 2
+plot '/tmp/field_filtering_data.dat' using 1:2 with linespoints title "50th percentile" lw 2, \
+     '/tmp/field_filtering_data.dat' using 1:3 with linespoints title "95th percentile" lw 2
 EOF
 
 gnuplot /tmp/plot.gp
 echo "Plot saved as field-filtering-overhead.png"
-rm -f "$TEMP_DATA" "${TEMP_DATA}.sorted" /tmp/plot.gp
+rm -f "$TEMP_DATA" /tmp/plot.gp
