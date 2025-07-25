@@ -14,7 +14,7 @@ trap cleanup INT
 DHIS2_IMAGES=(
   "dhis2/core:42.0"
   # "dhis2/core-dev:42.0-local-no-ehcache-no-system-cache"
-  "dhis2/core-dev:42.0-local-no-fieldfiltering"
+  "dhis2/core-dev:42.0-local-fieldfiltering-better"
 )
 
 PROF_ARGS=${PROF_ARGS:="-e cpu"}
@@ -127,7 +127,7 @@ for image in "${DHIS2_IMAGES[@]}"; do
   echo "Running $TEST..."
   mvn gatling:test \
     -Dgatling.simulationClass="org.hisp.dhis.test.$TEST" \
-    "$TEST_ARGS"
+    $TEST_ARGS
 
   echo "Stopping profiler..."
   docker compose exec web sh -c 'asprof stop 1' > /dev/null

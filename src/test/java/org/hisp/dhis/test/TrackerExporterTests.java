@@ -87,12 +87,23 @@ public class TrackerExporterTests extends Simulation {
     String program = System.getProperty("large") != null ? largeProgram : smallProgram;
 
     // TODO(ivo) get realistic query from Glowroot
-    // get a 100 requests per run irrespective of the response times so comparisons are likely
-    // to be more accurate
+    // TODO(ivo) picked one from Capture to see difference in field filtering before and after
+    // https://play.im.dhis2.org/dev-2-42/apps/capture#/?orgUnitId=DiszpKrYNg8&programId=VBqh0ynB2wv
+    // TODO(ivo) also show with all
     String query =
         "/api/tracker/events?program="
             + program
-            + "&totalPages=true&occurredAfter=2024-01-01&occurredBefore=2024-12-31";
+            + "&programStage=pTo4uMt3xur&orgUnitMode=selected&orgUnit=DiszpKrYNg8&order=occurredAt:desc&fields=*";
+    // +
+    // "&programStage=pTo4uMt3xur&orgUnitMode=selected&orgUnit=DiszpKrYNg8&order=occurredAt:desc&fields=dataValues,occurredAt,event,status,orgUnit,program,programType,updatedAt,createdAt,assignedUser";
+
+    // get a 100 requests per run irrespective of the response times so comparisons are likely
+    // to be more accurate
+    // I believe this one was picked by Maikel but am not sure if and why
+    // String query =
+    //     "/api/tracker/events?program="
+    //         + program
+    //         + "&totalPages=true&occurredAfter=2024-01-01&occurredBefore=2024-12-31";
     if (pageSize != null) {
       query = query + "&pageSize=" + pageSize;
     }

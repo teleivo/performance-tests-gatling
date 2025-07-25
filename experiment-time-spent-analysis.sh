@@ -19,7 +19,7 @@ DIR="$1"
 TEMP_DATA="/tmp/analysis.dat"
 echo "# pageSize overhead_50th overhead_95th" > "$TEMP_DATA"
 
-for dir in "$DIR"/*-page-*/; do
+for dir in "$DIR"/page-*/; do
     [ ! -d "$dir" ] && continue
 
     # Skip if no simulation.csv files found
@@ -28,7 +28,7 @@ for dir in "$DIR"/*-page-*/; do
         continue
     fi
 
-    page_size=$(basename "$dir" | sed 's/orgunits-page-//')
+    page_size=$(basename "$dir" | sed 's/page-//')
     echo "Processing page size: $page_size"
 
     gstat "$dir" > "${dir}percentiles.csv"
@@ -47,11 +47,13 @@ for dir in "$DIR"/*-page-*/; do
     overhead_50th=$(echo "$with_50th - $without_50th" | bc)
     overhead_95th=$(echo "$with_95th - $without_95th" | bc)
 
-    echo "$page_size $overhead_50th $overhead_95th" >> "$TEMP_DATA"
+    # Convert page_size to numeric (remove leading zeros for gnuplot)
+    numeric_page_size=$(echo "$page_size" | sed 's/^0*//')
+    echo "$numeric_page_size $overhead_50th $overhead_95th" >> "$TEMP_DATA"
 done
 
 # Extract request name from first simulation.csv file for title
-first_sim_csv=$(find "$DIR"/*-page-*/*/simulation.csv | head -n 1)
+first_sim_csv=$(find "$DIR"/page-*/*/simulation.csv | head -n 1)
 # Find the first request line and extract everything between quotes, escape & for gnuplot
 request_name=$(grep "^request," "$first_sim_csv" | head -n 1 | sed 's/.*"\([^"]*\)".*/\1/' | sed 's/&/\\\\&/g')
 
@@ -67,5 +69,6 @@ plot '/tmp/analysis.dat' using 1:2 with linespoints title "50th percentile" lw 2
 EOF
 
 gnuplot /tmp/plot.gp
+cat "$TEMP_DATA"
 echo "Plot saved as $DIR/analysis.png"
 rm -f "$TEMP_DATA" /tmp/plot.gp
