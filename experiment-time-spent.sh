@@ -12,9 +12,11 @@ cleanup() {
 trap cleanup INT
 
 DHIS2_IMAGES=(
-  "dhis2/core:42.0"
+  "dhis2/core-dev:42-47f0d4eae9"
+  # "dhis2/core:42.0"
   # "dhis2/core-dev:42.0-local-no-ehcache-no-system-cache"
-  "dhis2/core-dev:42.0-local-fieldfiltering-better"
+  # "dhis2/core-dev:42.0-local-fieldfiltering-better"
+  "dhis2/core-dev:42-47f0d4eae9-fieldfiltering-better"
 )
 
 PROF_ARGS=${PROF_ARGS:="-e cpu"}
@@ -148,4 +150,10 @@ done
 docker compose -f docker-compose.yml -f docker-compose.profile.yml down --volumes
 # convert Gatlings' binary simulation.log to simulation.csv
 glog --config ./src/test/resources/gatling.conf --scan-subdirs target/gatling
+
+# Run analysis if we have the expected output directory structure
+if [ -d "target/gatling" ]; then
+  echo "Running analysis..."
+  ./experiment-time-spent-analysis.sh target/gatling "${DHIS2_IMAGES[0]}" "${DHIS2_IMAGES[1]}"
+fi
 

@@ -10,12 +10,14 @@
 
 set -e
 
-if [ $# -ne 1 ]; then
-    echo "Usage: $0 <directory>"
+if [ $# -ne 3 ]; then
+    echo "Usage: $0 <directory> <A> <B>"
     exit 1
 fi
 
 DIR="$1"
+A="$2"
+B="$3"
 TEMP_DATA="/tmp/analysis.dat"
 echo "# pageSize overhead_50th overhead_95th" > "$TEMP_DATA"
 
@@ -60,9 +62,9 @@ request_name=$(grep "^request," "$first_sim_csv" | head -n 1 | sed 's/.*"\([^"]*
 cat > /tmp/plot.gp << EOF
 set terminal pngcairo size 1000,600
 set output '$DIR/analysis.png'
-set title "Difference in response times for requests against instance with and without field filtering\\n$request_name"
+set title "Difference in response times (ms) between $A and $B\\n$request_name"
 set xlabel "pageSize"
-set ylabel "Field filtering cost (ms)"
+set ylabel "Response times $A - $B (ms)"
 set key top left
 plot '/tmp/analysis.dat' using 1:2 with linespoints title "50th percentile" lw 2, \
      '/tmp/analysis.dat' using 1:3 with linespoints title "95th percentile" lw 2
