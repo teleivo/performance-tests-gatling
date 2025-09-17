@@ -86,7 +86,7 @@ jobs:
       if: inputs.test-target == 'local'
       run: |
         echo "Waiting for DHIS2 to start..."
-        timeout 300 bash -c 'until docker compose ps web | grep -q "healthy"; do sleep 10; echo "Still waiting..."; done'
+        timeout 300 bash -c 'until docker compose ps web-healthcheck | grep -q "healthy"; do sleep 10; echo "Still waiting..."; done'
         echo "DHIS2 is ready!"
 
     - name: Run tracker performance tests

@@ -34,7 +34,7 @@ for ((i=1; i<=RUNS; i++)); do
     docker compose up --force-recreate --detach web
     echo "Waiting for DHIS2 to start..."
     start_time=$(date +%s)
-    while ! docker compose ps web | grep -q "healthy"; do
+    while ! docker compose ps web-healthcheck | grep -q "healthy"; do
         sleep 10
         echo "Still waiting..."
         if [ $(($(date +%s) - start_time)) -gt 300 ]; then
