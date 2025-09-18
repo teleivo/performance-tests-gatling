@@ -12,11 +12,12 @@ cleanup() {
 trap cleanup INT
 
 DHIS2_IMAGES=(
-  "dhis2/core-dev:42-47f0d4eae9"
+  "dhis2/core-dev:local"
   # "dhis2/core:42.0"
   # "dhis2/core-dev:42.0-local-no-ehcache-no-system-cache"
   # "dhis2/core-dev:42.0-local-fieldfiltering-better"
-  "dhis2/core-dev:42-47f0d4eae9-fieldfiltering-better"
+  # "dhis2/core-dev:42-47f0d4eae9"
+  # "dhis2/core-dev:42-47f0d4eae9-fieldfiltering-better"
 )
 
 PROF_ARGS=${PROF_ARGS:="-e cpu"}
@@ -90,9 +91,9 @@ post_process_profiler_data() {
   local title="$TEST on $image_name (async-profiler $PROF_ARGS)"
   # generate flamegraph and collapsed stack traces using jfrconv from async-profiler
   docker compose exec --workdir /profiler-output web \
-    sh -c "jfrconv $jfrconv_flags --dot --title \"$title\" profile.jfr profile.html"
+    jfrconv "$jfrconv_flags" --dot --title "$title" profile.jfr profile.html
   docker compose exec --workdir /profiler-output web \
-    sh -c "jfrconv $jfrconv_flags --dot profile.jfr profile.collapsed"
+    jfrconv "$jfrconv_flags" --dot profile.jfr profile.collapsed
 
   docker compose cp web:/profiler-output/. "$gatling_dir/"
 
@@ -124,7 +125,7 @@ for image in "${DHIS2_IMAGES[@]}"; do
 
   rotate_sql_logs
 
-  docker compose exec --workdir /profiler-output web sh -c "asprof start $PROF_ARGS -f profile.jfr 1" > /dev/null
+  docker compose exec --workdir /profiler-output web asprof start $PROF_ARGS -f profile.jfr 1 > /dev/null
 
   echo "Running $TEST..."
   mvn gatling:test \
@@ -132,7 +133,7 @@ for image in "${DHIS2_IMAGES[@]}"; do
     $TEST_ARGS
 
   echo "Stopping profiler..."
-  docker compose exec web sh -c 'asprof stop 1' > /dev/null
+  docker compose exec web asprof stop 1 > /dev/null
 
   if [ -f target/gatling/lastRun.txt ]; then
     gatling_run_dir="target/gatling/$(cat target/gatling/lastRun.txt)"
